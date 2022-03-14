@@ -28,78 +28,28 @@ dat$SS = ((dat$Age_at_maturity_max_y - dat$Age_at_maturity_min_y)) / dat$AaM
 # calculate juvenile and adult mortality 
 # lifetime fecundity and age at maturity as proxies respectively
 dat$log.AaM = log(dat$AaM)
-dat$juvSurv = ifelse((dat$Longevity_max_y - dat$AaM) < 1, 
-                     1/(dat$Litter_size_mean * dat$Reproductive_output_y),
-                     1/((dat$Longevity_max_y - dat$AaM) * (dat$Litter_size_mean * dat$Reproductive_output_y)))
+dat$juvMort = ifelse((dat$Longevity_max_y - dat$AaM) < 1, 
+                     log(dat$Litter_size_mean * dat$Reproductive_output_y),
+                     log((dat$Longevity_max_y - dat$AaM) * (dat$Litter_size_mean * dat$Reproductive_output_y)))
 
-dat$juvMort = 1-log(dat$juvSurv)
 dat$adMort = 1/(1 + dat$AaM)
 
 dat$Order = as.factor(dat$Order)
 
 
 # create factor for reproductive mode
-dat[which(dat[,22] == 0), 22] = NA
-dat[which(dat[,23] == 0), 23] = NA
-dat[which(dat[,24] == 0), 24] = NA
-dat[which(dat[,26] == 0), 26] = NA
+dat[which(dat[,"Dir"] == 0), "Dir"] = NA
+dat[which(dat[,"Lar"] == 0), "Lar"] = NA
+dat[which(dat[,"Viv"] == 0), "Viv"] = NA
+dat[which(dat[,"Ped"] == 0), "Ped"] = NA
 
 
-repmode = dat[,c(1,22:24,26)] %>% gather(type, value, -id) %>% na.omit() %>% select(-value)%>% arrange(id)
+repmode = dat[,c("id","Dir", "Lar", "Viv", "Ped")] %>% gather(type, value, -id) %>% na.omit() %>% select(-value)%>% arrange(id)
 
 dat = left_join(dat, repmode)
 dat$RepMode = as.factor(dat$type)
 
 summary(dat$RepMode)
-
-
-#dat$RepMode = names(dat[,35:37])[max.col(!is.na(dat[,35:37]))]
-
-#dat[which(dat[,7] == "P"),47] = "P"
-
-#dat$RepMode = as.factor(dat$RepMode)
-
-# create relative cluss match column
-dat$RCM = ((dat$Offspring_size_mean^3) * dat$Litter_size_mean) / (dat$Body_size_mm^3)
-
-# create investment per bout column
-dat$IPB = dat$Litter_size_mean / (1/dat$juvSurv)
-
-dat$reloff = (dat$Offspring_size_mean^3)/(dat$Body_size_mm^3)
-
-#dat$habitat = names(dat[,6:9])[max.col(!is.na(dat[,6:9]))]
-#dat$habitat = as.factor(dat$habitat)
-
-#datsub = dat %>%
-#  filter(Family == "Brachycephalidae" | Family == "Bufonidae" | Family == "Ranidae" | Family == "Microhylidae" | Family == "Hylidae" | Family == "Strabomantidae") %>%
-#  select(Family, Body_size_mm, Body_mass_g)
-
-#find_hull <- function(datsub) datsub[chull(datsub$Body_size_mm, datsub$Body_mass_g), ]
-#hulls <- ddply(na.omit(datsub), "Family", find_hull)
-
-#ggplot(datsub, aes(x = log(Body_size_mm ^ 3), y = log(Body_mass_g), col = Family)) +
-#  geom_point() + scale_colour_manual(values = c("Brachycephalidae" = "Dark Green", "Bufonidae" = "Dark Blue", "Hylidae" = "Dark Red", "Microhylidae" = "Black", "Strabomantidae" = "Black", "Ranidae" = "Black"))
-
-#fig2 <- ggplot(datsub, aes(x = log(Body_size_mm ^ 3), y = log(Body_mass_g), col = Family, fill = Family)) + 
-#  geom_point() + 
-  #labs(x = "Body Size", y = "Mass"); fig2
-
-#ggplot(dat, aes(Order, log(Body_size_mm), col = Order)) +
- #geom_sina() +
-#  xlab("") + ylab("Body Size") +
-#  theme_Publication() + theme(
-#    axis.text.x = element_blank(),
-#    axis.text.y = element_blank(),
-#    axis.ticks = element_blank())+ 
-#  scale_color_brewer()
-
-# Fig. 2A
-# Density lines
-#fig2a <- fig2 + geom_density2d(alpha=.5); fig2a
-
-# Fig. 2B
-# Convex hulls
-#fig2b <- fig2 + geom_polygon(data=hulls, alpha=.2); fig2b
 
 # remove species I already have data for (I trust my numbers more than these)
 #spp = c("Alytes obstetricans", "Arthroleptis poecilonotus", "Bombina bombina", "Bombina pachypus", "Bombina variegata", 
@@ -116,12 +66,23 @@ dat$reloff = (dat$Offspring_size_mean^3)/(dat$Body_size_mm^3)
 #  filter(!Species %in% spp)
 
 # extract useful columns
-amphs = dat %>%
+amphibians = dat %>%
   mutate(Class = rep("Amphibia", length.out = length(Order))) %>%
-  select(class = "Class", order = "Order", family = "Family", species = "Species", AaM = "AaM", log.AaM = "log.AaM", longevity = "Longevity_max_y", "juvSurv", "juvMort", "adMort", mass = "Body_mass_g", svl = "Body_size_mm", birth.svl = "Offspring_size_mean", repmode = "RepMode", RCM = "RCM", IPB = "IPB", reloff = "reloff", Terr = "Terr", AdTerr = "AdTerr")
+  select(class = "Class", order = "Order", family = "Family", species = "Species", AaM = "AaM", longevity = "Longevity_max_y", "juvMort", "adMort", mass = "Body_mass_g", svl = "Body_size_mm", fecundity = "Litter_size_mean", birth.svl = "Offspring_size_mean", repmode = "RepMode", Terr = "Terr", AdTerr = "AdTerr", IF = "IF")
+
+amphibians$na_count <- apply(amphibians, 1, function(x) sum(is.na(x)))
 
 rm(dat)
-rm(spp)
+rm(repmode)
+#rm(spp)
+
+# length mass relationships
+lm(log(mass) ~ log(svl) + order, data = amphibians)
+
+amphibians[which(amphibians$order == "Anura"), "mass"] = exp(-7.692 + (2.497*log(amphibians[which(amphibians$order == "Anura"), "svl"]))) 
+amphibians[which(amphibians$order == "Caudata"), "mass"] = exp(-2.525 -7.692 + (2.497*log(amphibians[which(amphibians$order == "Caudata"), "svl"])))
+amphibians[which(amphibians$order == "Gymnophiona"), "mass"] = exp(-3.711 -7.692 + (2.497*log(amphibians[which(amphibians$order == "Gymnophiona"), "svl"])))
+
 
 ################################
 # personally compiled amphibians
@@ -135,17 +96,18 @@ dat = dat %>%
 
 dat$repmode = as.factor(dat$repmode)
 dat$log.AaM = log(dat$AaM)
-dat$juvSurv = ifelse((dat$Longevity - dat$AaM) < 1, 
-                     1/(dat$Clutches.per.year * dat$Clutch),
-                     1/((dat$Longevity - dat$AaM) * (dat$Clutches.per.year * dat$Clutch)))
+dat$juvMort = ifelse((dat$Longevity - dat$AaM) < 1, 
+                     log(dat$Clutches.per.year * dat$Clutch),
+                     log((dat$Longevity - dat$AaM) * (dat$Clutches.per.year * dat$Clutch)))
 
-dat$juvMort = 1-log(dat$juvSurv)
 dat$adMort = 1/(1 + dat$AaM)
 
 dat$GS <- paste(dat$Genus, dat$Species)
 
 amps = dat %>%
-  select(class = "Class", order = "Order", family = "Family", species = "GS", "AaM", log.AaM = "log.AaM", longevity = "Longevity", "juvSurv", "juvMort", "adMort", svl = "Max.Size", repmode = "repmode", Terr = "Terr")
+  select(class = "Class", order = "Order", family = "Family", species = "GS", "AaM", longevity = "Longevity", "juvMort", "adMort", svl = "Max.Size", repmode = "repmode", Terr = "Terr", IF = "IF")
+
+amps$na_count <- apply(amps, 1, function(x) sum(is.na(x)))
 
 rm(dat)
 
@@ -162,28 +124,26 @@ dat = dat %>%
 dat$repmode = as.factor(dat$repmode)
 dat$log.AaM = log(dat$AaM)
 
-dat$juvSurv = ifelse((dat$Longevity - dat$AaM) < 1, 
-                     1/(dat$Clutches.per.year * dat$Clutch),
-                     1/((dat$Longevity - dat$AaM) * (dat$Clutches.per.year * dat$Clutch)))
+dat$juvMort = ifelse((dat$Longevity - dat$AaM) < 1, 
+                     log(dat$Clutches.per.year * dat$Clutch),
+                     log((dat$Longevity - dat$AaM) * (dat$Clutches.per.year * dat$Clutch)))
 
-dat$juvMort = 1-log(dat$juvSurv)
 dat$adMort = 1/(1 + dat$AaM)
 
 dat$GS <- paste(dat$Genus, dat$Species)
 
 
-reps = dat %>%
-  select(class = "Class", order = "Order", family = "Family", species = "GS", "AaM", log.AaM = "log.AaM", longevity = "Longevity", "juvSurv", "juvMort", "adMort", svl = "Max.Size", birth.svl = "birth.svl", repmode = "repmode", Terr = "Terr", AdTerr = "AdTerr")
+reptiles = dat %>%
+  select(class = "Class", order = "Order", family = "Family", species = "GS", "AaM", longevity = "Longevity", "juvMort", "adMort", svl = "Max.Size", fecundity = "Clutch", birth.svl = "birth.svl", repmode = "repmode", Terr = "Terr", AdTerr = "AdTerr", IF = "IF")
+
+reptiles$na_count <- apply(reptiles, 1, function(x) sum(is.na(x)))
 
 rm(dat)
-summary(reps)
-reps$na_count <- apply(reps, 1, function(x) sum(is.na(x)))
 
-summary(as.factor(reps$na_count))
 ###################################################
 # Meiri, S., 2018. Traits of lizards of the world: 
 # Variation around a successful evolutionary design. Global ecology and biogeography, 27(10), pp.1168-1172.
-dat = read.csv("Lizards.csv")
+dat = read.csv("lizards2.csv")
 #dat = dat[complete.cases(dat),]
 
 dat$maximum.SVL = as.numeric(as.character(dat$maximum.SVL))
@@ -197,7 +157,7 @@ dat[is.na(dat[,13]),13] = dat[is.na(dat[,13]),12]
 # calculate average clutch size (using range if mean not reported)
 dat$Clutch_mean = (dat$smallest.mean.clutch.size + dat$largest.mean.clutch.size) / 2
 dat$Clutch_range = (dat$smallest.clutch + dat$largest.clutch) / 2
-dat[is.na(dat[,26]),26] = dat[is.na(dat[,26]),27]
+dat[is.na(dat[,"Clutch_mean"]),"Clutch_mean"] = dat[is.na(dat[,"Clutch_mean"]),"Clutch_range"]
 
 # caculate age at maturity (in years)
 dat$AaM = (dat$oldest.age.at.first.breeding..months. + dat$youngest.age.at.first.breeding..months.) / 24
@@ -206,22 +166,23 @@ dat$adMort = 1/(1 + dat$AaM)
 
 dat$SS = (dat$oldest.age.at.first.breeding..months. - dat$youngest.age.at.first.breeding..months.) / dat$AaM
 
-dat$juvSurv = ifelse((dat$Longevity - dat$AaM) < 1, 
-                     1/(dat$Clutch_mean),
-                     1/((dat$Longevity - dat$AaM) * (dat$Clutch)))
-
-dat$juvMort = 1-log(dat$juvSurv)
+dat$juvMort = ifelse((dat$Longevity - dat$AaM) < 1, 
+                     log(dat$Clutch_mean),
+                     log((dat$Longevity - dat$AaM) * (dat$Clutch_mean)))
 
 dat$Order = as.factor(dat$Order)
 dat$Species = paste(dat$Genus, dat$epithet, sep=" ")
 
-liz = dat %>%
+lizards = dat %>%
   mutate(Terr = rep("1", length.out = length(AaM))) %>%
   mutate(AdTerr = rep("1", length.out = length(AaM))) %>%
-  select(class = "X", order = "Order", family = "Family", species = "Species", "AaM", "log.AaM", "adMort", "juvMort",  svl = "female.SVL", birth.svl = "hatchling.neonate.SVL", repmode = "reproductive.mode", Terr = "Terr")
+  mutate(IF = rep("1",length.out = length(AaM))) %>%
+  select(class = "X", order = "Order", family = "Family", species = "Species", longevity = "Longevity", "AaM", "adMort", "juvMort",  svl = "female.SVL", birth.svl = "hatchling.neonate.SVL", fecundity = "Clutch_mean", repmode = "reproductive.mode", Terr = "Terr", IF = "IF")
+
+lizards$na_count <- apply(lizards, 1, function(x) sum(is.na(x)))
 
 rm(dat)
-summary(liz)
+
 ####################################
 # endotherms
 # Nathan P. Myhrvold, Elita Baldridge, Benjamin Chan, Dhileep Sivam, Daniel L. Freeman, and S. K. Morgan Ernest. 2015. 
@@ -234,15 +195,12 @@ dat = dat %>%
 
 dat[dat == -999] = NA
 dat$AaM = dat$female_maturity_d/365
-dat$log.AaM = log(dat$AaM)
-dat$longevity = dat$longevity_y
+dat$longevity = rowMeans(dat[,c("longevity_y", "maximum_longevity_y")], na.rm = T)
 
-dat$juvSurv = ifelse((dat$longevity - dat$AaM) < 1, 
-                     1/(dat$litters_or_clutches_per_y * dat$litter_or_clutch_size_n),
-                     1/((dat$longevity - dat$AaM) * (dat$litters_or_clutches_per_y * dat$litter_or_clutch_size_n)))
+dat$juvMort = ifelse((dat$longevity - dat$AaM) < 1, 
+                     log(dat$litters_or_clutches_per_y * dat$litter_or_clutch_size_n),
+                     log((dat$longevity - dat$AaM) * (dat$litters_or_clutches_per_y * dat$litter_or_clutch_size_n)))
 
-
-dat$juvMort = 1-log(dat$juvSurv)
 dat$adMort = 1/(1 + dat$AaM)
 
 dat$repmode = as.factor(as.numeric(as.factor(dat$class))-1)
@@ -250,140 +208,81 @@ dat$repmode = as.factor(as.numeric(as.factor(dat$class))-1)
 dat$SS = (dat$female_maturity_d - dat$male_maturity_d) / dat$female_maturity_d
 dat$Species = paste(dat$genus, dat$species, sep=" ")
 
-
 endos = dat %>% 
   mutate(order = class) %>%
-  select("order", "class", "family", species = "Species", "AaM", "log.AaM", "longevity", "juvSurv", "juvMort", "adMort", svl = "adult_svl_cm", birth.svl = "birth_or_hatching_svl_cm", mass = "adult_body_mass_g", birth.mass = "birth_or_hatching_weight_g", repmode = "repmode", Terr = "Terr", AdTerr = "AdTerr") %>%
+  mutate(IF = rep("1",length.out = length(AaM))) %>%
+  select("order", "class", "family", species = "Species", "AaM", "longevity", "juvMort", "adMort", svl = "adult_svl_cm", birth.svl = "birth_or_hatching_svl_cm", mass = "adult_body_mass_g", birth.mass = "birth_or_hatching_weight_g", fecundity = "litter_or_clutch_size_n", repmode = "repmode", Terr = "Terr", AdTerr = "AdTerr", IF = "IF") %>%
   mutate(svl = svl * 10) %>%
   mutate(birth.svl = birth.svl * 10) # convert to mm for consistency
 
-endos[which(endos$family == "Tachyglossidae"),15] = "0"
-endos[which(endos$family == "Ornithorhynchidae"),15] = "0"
+endos[which(endos$family == "Tachyglossidae"),"repmode"] = "0"
+endos[which(endos$family == "Ornithorhynchidae"),"repmode"] = "0"
+
+endos$na_count <- apply(endos, 1, function(x) sum(is.na(x)))
 
 rm(dat)
-
-
 
 #############################################
 # FishTraits, FishBase
 ############################################
 
-dat = read.csv("bony_fish.csv")
+#dat = read.csv("fishdata2021.csv")
 
-species = unique(dat[,c(2,3,16,17,18)])
+#species = unique(dat[,c(2,3,16,17,18)])
 
-fish = data.frame(species, 
-                  AgeMatMin = as.vector(tapply(dat$AgeMatMin, dat$SpecCode, mean, na.rm=TRUE)),
-                  AgeMatMin2 = as.vector(tapply(dat$AgeMatMin2, dat$SpecCode, mean, na.rm=TRUE)),
-                  FecundityMin = as.vector(tapply(dat$FecundityMin, dat$SpecCode, mean, na.rm=TRUE)),
-                  FecundityMax = as.vector(tapply(dat$FecundityMax, dat$SpecCode, mean, na.rm=TRUE)),
-                  longevity = as.vector(tapply(dat$tmax, dat$SpecCode, mean, na.rm=TRUE)),
-                  birth.svlMin = as.vector(tapply(dat$LengthOffspringMin, dat$SpecCode, mean, na.rm=TRUE)), 
-                  birth.svlMax = as.vector(tapply(dat$LengthOffspringMax, dat$SpecCode, mean, na.rm=TRUE)))
+#fish = data.frame(species, 
+#                  AgeMatMin = as.vector(tapply(dat$AgeMatMin, dat$SpecCode, mean, na.rm=TRUE)),
+#                  AgeMatMin2 = as.vector(tapply(dat$AgeMatMin2, dat$SpecCode, mean, na.rm=TRUE)),
+#                  FecundityMin = as.vector(tapply(dat$FecundityMin, dat$SpecCode, mean, na.rm=TRUE)),
+#                  FecundityMax = as.vector(tapply(dat$FecundityMax, dat$SpecCode, mean, na.rm=TRUE)),
+#                  longevity = as.vector(tapply(dat$tmax, dat$SpecCode, mean, na.rm=TRUE)),
+#                  birth.svlMin = as.vector(tapply(dat$LengthOffspringMin, dat$SpecCode, mean, na.rm=TRUE)), 
+#                  birth.svlMax = as.vector(tapply(dat$LengthOffspringMax, dat$SpecCode, mean, na.rm=TRUE)))
                   
-fish$AaM <- rowMeans(cbind(fish$AgeMatMin, fish$AgeMatMin2), na.rm = T)
-fish$fecundity <- rowMeans(cbind(fish$FecundityMin, fish$FecundityMax), na.rm = T)
-fish$birth.svl <- rowMeans(cbind(fish$birth.svlMin, fish$birth.svlMax), na.rm = T)
+#fish$AaM <- rowMeans(cbind(fish$AgeMatMin, fish$AgeMatMin2), na.rm = T)
+#fish$fecundity <- rowMeans(cbind(fish$FecundityMin, fish$FecundityMax), na.rm = T)
+#fish$birth.svl <- rowMeans(cbind(fish$birth.svlMin, fish$birth.svlMax), na.rm = T)
 
-fish$juvSurv = ifelse((fish$longevity - fish$AaM) < 1, 
-                      1/(fish$fecundity),
-                      1/((fish$longevity - fish$AaM) * (fish$fecundity)))
+#fish$juvMort = ifelse((fish$longevity - fish$AaM) < 1, 
+ #                     log(fish$fecundity),
+ #                     log((fish$longevity - fish$AaM) * (fish$fecundity)))
 
-fish$juvMort = 1-log(fish$juvSurv)
+#fish$log.AaM = log(fish$AaM)
+#fish$adMort = 1/(1 + fish$AaM)
 
-fish$log.AaM = log(fish$AaM)
-fish$adMort = 1/(1 + fish$AaM)
+# body sizes from fishbase
+#dat2 = rfishbase::species(version="21.04")
 
-# body size
-dat2 = species() 
-
-dat2$svl <- rowMeans(cbind(dat2$LengthFemale, dat2$Length), na.rm = T)
-
-dat2 = dat2 %>% 
-  select(SpecCode, Species, svl)
-
-fish = merge(fish, dat2, by = "SpecCode") 
-
-fish = fish %>%
-  mutate(Terr = rep("0", length.out = length(Class))) %>%
-  mutate(AdTerr = rep("0", length.out = length(Class))) %>%
-  mutate(repmode = rep("0", length.out = length(Class))) %>%
-  select(class = "Class", order = "Order", family = "Family", species = "Species.x", "AaM", log.AaM = "log.AaM", longevity = "longevity", "juvSurv", "juvMort", "adMort", svl = "svl", birth.svl, repmode = "repmode", Terr = "Terr", AdTerr = "AdTerr")
-
-fish$na_count <- apply(fish, 1, function(x) sum(is.na(x)))
-
-summary(fish$na_count)
-
-write.csv(fish, "bony_fish.csv")
-###############
-#dat2 = species() 
-
-#dat2$svl <- rowMeans(cbind(dat2$LengthFemale, dat2$Length), na.rm = T)
+#dat2$svl <- rowMeans(cbind(as.numeric(dat2$LengthFemale), dat2$Length), na.rm = T)
 
 #dat2 = dat2 %>% 
-#  select(SpecCode, Species, svl)
+#  select(SpecCode, Species, svl, Weight)
 
 
-#fecundity traits
-#dat3 <- fecundity()
-
-#dat3$fec <- rowMeans(cbind(dat3$FecundityMin, dat3$FecundityMax), na.rm = T)
-
-#dat3 = dat3 %>%
-#  select(SpecCode, fec)
+# repmode and IF
+#dat3 = read.csv("bony_fish_IF.csv")
+#dat3 = dat3 %>% 
+#  select(SpecCode = "X", "repmode", "fertmode")
 
 
-# maturity traits
-#dat4 <- maturity()  
+# merge fish databases
+#fish = merge(fish, dat2, by = "SpecCode",all.x = T) 
+#fish = merge(fish, dat3, by = "SpecCode", all.x = T)
 
-#dat4$AaM <- rowMeans(cbind(dat4$AgeMatMin, dat4$AgeMatMin2), na.rm = T)
+# select appropriate columns
+#fish = fish %>%
+#  mutate(Terr = rep("0", length.out = length(Class))) %>%
+#  mutate(AdTerr = rep("0", length.out = length(Class))) %>%
+#  select(class = "Class", order = "Order", family = "Family", species = "Species.x", "AaM", longevity = "longevity", "juvMort", "adMort", svl = "svl", fecundity, birth.svl, mass = "Weight", Terr = "Terr", AdTerr = "AdTerr", IF = "fertmode", "repmode")
 
-#dat4 = dat4 %>%
-#  select(SpecCode, AaM)
+##fish$na_count <- apply(fish, 1, function(x) sum(is.na(x)))
 
+#rm(dat)
+#rm(dat2)
+#rm(dat3)
+#rm(species)
 
-# larval data
-#dat5 = larvae()
-
-#dat5$birth.svl = rowMeans(cbind(dat5$LhMin, dat5$LhMax), na.rm = T)
-
-#dat5 = dat5 %>%
-#  select(SpecCode, birth.svl)
-
-
-#dd = merge(dat, dat2, by = "SpecCode")
-#dd = merge(dd, dat3, by = "SpecCode")
-#dd = merge(dd, dat4, by = "SpecCode")
-#dd = merge(dd, dat5, by = "SpecCode")
-
-#dat2$fec <- as.vector(tapply(dd$fec, dd$SpecCode, mean, na.rm=TRUE))
-#dat2$AaM <- as.vector(tapply(dd$AaM, dd$SpecCode, mean, na.rm=TRUE)) 
-#dat2$birth.svl <- as.vector(tapply(dd$birth.svl, dd$SpecCode, mean, na.rm=TRUE)) 
-
-
-#dat <- dd[match(unique(dd$SpecCode), dd$SpecCode),]
-
-#dat2$juvSurv = ifelse((dat2$longevity - dat2$AaM) < 1, 
-#                     1/(dat2$fec),
-#                     1/((dat2$longevity - dat2$AaM) * (dat2$fec)))
-
-#dat2$juvMort = 1-log(dat2$juvSurv)
-
-#dat4$log.AaM = log(dat4$AaM)
-#dat$adMort = 1/(1 + dat$AaM)
-
-#fish = dat %>%
-#  mutate(Terr = rep("0", length.out = length(svl))) %>%
-#  mutate(AdTerr = rep("0", length.out = length(svl))) %>%
-#  mutate(Class = rep("Fish", length.out = length(svl))) %>%
-#  mutate(Order = rep("Fish", length.out = length(svl))) %>%
-#  mutate(Family = rep("Fish", length.out = length(svl))) %>%
-#  mutate(repmode = rep("0", length.out = length(svl))) %>%
-#  select(class = "Class", order = "Order", family = "Family", species = "Species.x", "AaM", log.AaM = "log.AaM", longevity = "longevity", "juvSurv", "juvMort", "adMort", svl = "svl", birth.svl = "LL", repmode = "repmode", Terr = "Terr", AdTerr = "AdTerr")
-
-rm(dat)
-
-
+#write.csv(fish, "bony_fish_JACOB.csv")
 
 #### shark data ######
 
@@ -394,11 +293,11 @@ dat = read.csv("SharkData.csv")
 # calculate juvenile and adult mortality 
 # lifetime fecundity and age at maturity as proxies respectively
 dat$log.AaM = log(dat$age.mat)
-dat$juvSurv = ifelse((dat$max.age - dat$age.mat) < 1, 
-                     1/(dat$litter.size * dat$interval),
-                     1/((dat$max.age - dat$age.mat) * (dat$litter.size * dat$interval)))
 
-dat$juvMort = 1-log(dat$juvSurv)
+dat$juvMort = ifelse((dat$max.age - dat$age.mat) < 1, 
+                     log(dat$litter.size * dat$interval),
+                     log((dat$max.age - dat$age.mat) * (dat$litter.size * dat$interval)))
+
 dat$adMort = 1/(1 + dat$age.mat)
 
 dat$class = as.factor(dat$ï..superorder)
@@ -409,38 +308,100 @@ dat$pup.size = dat$pup.size * 10
 sharks = dat %>% mutate(Class = rep("Sharks", length.out = length(max.age))) %>%
   mutate(AdTerr = rep("0", length.out = length(max.age))) %>%
   mutate(Terr = rep("0", length.out = length(max.age))) %>%
-  select(class = "Class", order = "Class", family = "family", "species", AaM = "age.mat", log.AaM = "log.AaM", longevity = "max.age", "juvSurv", "juvMort", "adMort", svl = "max.size", birth.svl = "pup.size", repmode = "bear", Terr = "Terr", AdTerr = "AdTerr")
+  mutate(IF = rep("1", length.out = length(max.age))) %>%
+  select(class = "Class", order = "Class", family = "family", "species", AaM = "age.mat", longevity = "max.age", "juvMort", "adMort", svl = "max.size", fecundity = "litter.size", birth.svl = "pup.size", repmode = "bear", Terr = "Terr", AdTerr = "AdTerr", IF = "IF")
   
+sharks$na_count <- apply(sharks, 1, function(x) sum(is.na(x)))
+
+rm(dat)
+
 
 ################
-# merge datasets
-fish = read.csv("bony_fish.csv")
+# bony fish final
+dat = read.csv("final_fish.csv")
 
-x = merge(endos, amphs, all = TRUE)
-x = merge(x, reps, all = TRUE)
-x = merge(x, amps, all = TRUE)
-x = merge(x, liz, all = TRUE)
+dat$juvMort = ifelse((dat$longevity - dat$AaM) < 1, 
+                     log(dat$fecundity),
+                     log((dat$longevity - dat$AaM) * (dat$fecundity)))
+
+dat$adMort = 1/(1 + dat$AaM)
+
+# select appropriate columns
+fish = dat %>%
+  mutate(Terr = rep("0", length.out = length(class))) %>%
+  mutate(AdTerr = rep("0", length.out = length(class))) %>%
+  select(class = "class", order = "order", family = "family", species = "species", "AaM", longevity = "longevity", "juvMort", "adMort", svl = "svl", fecundity, birth.svl, mass = "mass", Terr = "Terr", AdTerr = "AdTerr", IF = "fertmode", "repmode")
+
+fish$na_count <- apply(fish, 1, function(x) sum(is.na(x)))
+
+write.csv(x = fish, file = "vtparity_bonyfish.csv")
+
+rm(dat)
+################
+# merge datasets
+x = merge(endos, amps, all = TRUE)
+x = merge(x, amphibians, all = TRUE)
+x = merge(x, reptiles, all = TRUE)
+x = merge(x, lizards, all = TRUE)
 x = merge(x, fish, all = TRUE)
 x = merge(x, sharks, all = TRUE)
 
 
 
-
 x = x %>% 
   mutate(repmode = recode(repmode, 
-                          `Dir`="1",
+                          `Dir`="0",
                           `Viv`="1",
                           `Lar`="0",
                           `Ped`="0",
                           `Mixed`="1",
                           `Oviparous`="0",
-                          `unclear`="1",
+                          `unclear`="0",
                           `Viviparous`="1",
                           `live-bearing`="1",
                           `egg-laying`="0")) %>%
   droplevels()
 
+x = x[!duplicated(x),]
+x = x[!duplicated(x$species), ]
+
+table(x$repmode, x$class)
+table(x$adMort, x$class)
 
 write.csv(x = x, file = "vtparity.csv")
 
-summary(x$repmode)
+dat = read.csv("vtparity.csv")
+dat = dat[which(dat$class == "Actinopterygii"),]
+summary(dat$repmode)
+
+comp.x = x[which(x$juvMort != "NA" & x$adMort != "NA" & x$svl != "NA"),]
+
+table(comp.x$class, comp.x$repmode)
+
+
+
+#######################
+# mass-length equations
+
+# bony fish
+dat = rfishbase::length_weight(version="21.04")
+
+dat = dat %>%
+  select(Species, a, b)
+
+# lizards
+dat2 = read.csv("lizard_mass_length_eqs.csv")
+
+dat2 = dat2 %>%
+  select(Species = "Binomial", a = "intercept", b = "slope")
+
+# sharks
+dat3 = read.csv("SharkData.csv")
+
+dat3 = dat3 %>%
+  select(Species = "species", a = "length.weight.a", b = "length.weight.b")
+
+
+x2 = rbind(dat, dat2, dat3)
+x2 = x2[complete.cases(x2),]
+write.csv(x2, "VTparity_length_mass.csv")
