@@ -1,0 +1,216 @@
+---
+title: "Vertebrate Tree"
+output: html_notebook
+---
+
+```{r}
+#rm(list=ls(all=TRUE))
+library(ape)
+library(treeplyr)
+library(rotl)
+library(castor)
+library(geiger)
+library(phytools)
+library(phylolm)
+getwd()
+
+```
+
+I. Tree Generation - Can Skip to II and just load synthesis td.
+```{r eval=FALSE}
+amphib <- drop.tip(read.tree("../trees/amph_shl_new_Consensus_7238.tre"), "Homo_sapiens") #Jetz & Pyron 2018
+birds <- read.tree("../trees/bird.tre") #Jetz 
+squam <- read.tree("../trees/squam_shl_new_Consensus_9755.tre") #Tonini
+mamm <- read.tree("../trees/Completed_5911sp_topoCons_FBDasZhouEtAl/MamPhy_BDvr_Completed_5911sp_topoCons_FBDasZhouEtAl_v2_tree1000.tre") # Upham
+sharktree <- read.nexus("../trees/10cal.tree250.nex") #Mull 
+fishtree <- read.tree("../trees/actinopt_12k_treePL.tre") #Rabosky
+croctree <- readRDS("../trees/crocTree.RDS")
+turtletree <- drop.tip(read.nexus("../trees/bd.mcc.median_heights.tre"), c("AA_Alligator", "AA_Ggallus"))
+turtletree$tip.label <- sapply(strsplit(turtletree$tip.label, "_"), function(x) paste(x[1], x[2], sep="_"))
+turtletree <- drop.tip(turtletree, which(duplicated(turtletree$tip.label)))
+trees <- list("sharks"=sharktree, "fish"=fishtree, "amphib"=amphib, "squamates"=squam, "birds"=birds, "mamm"=mamm, "turtles"=turtletree, "crocs"=croctree)
+```
+
+Manual backbone of the tree with dates from the TimeTree of Life. 
+
+```{r eval=FALSE}
+ntips <- length(trees)
+tip.labels <- c("sharks","fish", "amphib", "squamates", "birds", "mamm", "turtles", "crocs")
+edge <- matrix(c(
+  15, 5,
+  15, 8,
+  14, 15,
+  14, 7,
+  13, 14,
+  13, 4,
+  12, 13,
+  12, 6,
+  11, 12,
+  11, 3,
+  10, 11,
+  10, 2,
+  9, 10,
+  9, 1), byrow=TRUE, ncol=2)
+#Medians:
+#edge.length <- rep(1, nrow(edge))
+edge.length <- c("bird"=245, "croc"=245  ,"croc_stem"=261-245,"turt"=261,"turt_stem"=281-261, "squam"=281,"arch_stem"=319-281,"mamm"=319, "amniote_stem"=353-319, "amphib" = 353, "tet_stem"=431-353, "fish"=431, "fish_stem"=464-431, "shark"=464)
+#edge.length <- c(282, 282, 318-282, 318, 351.7, 351.7-318, 433-351.7, 433, 465-433, 465)
+#Means
+#edge.length <- c(280, 280, 312-280, 312, 378.3, 378.3-312, 435-378.3, 435, 473-435, 473)
+Nnode <- 7
+ordertree <- list(edge=edge, Nnode=Nnode, tip.label=tip.labels, edge.length=unname(edge.length))
+class(ordertree) <- 'phylo'
+ordertree <- reorder.phylo(ordertree, "postorder")
+plot(ordertree)
+```
+Use `glomogram.phylo` to combine trees. 
+
+```{r eval=FALSE}
+otax <- data.frame("Class"= ordertree$tip.label, "Superclass"=c("Chondrichthyes", "Actinopterygii", rep("Tetrapoda",6)))
+rownames(otax) <- ordertree$tip.label
+classtree <- nodelabel.phylo(ordertree, otax, ncores=1)
+
+#trees <- lapply(tds, function(x) x$phy)
+trees <- lapply(trees, multi2di)
+class(trees) <- "multiPhylo"
+plot(classtree)
+abline(v=sapply(trees, function(x) max(nodeHeights(x))),lty=2)
+tree <- glomogram.phylo(classtree, trees)
+tree
+saveRDS(tree, file="../output/allchordates_forLaura.rds")
+```
+
+## Optional: Combining tree with OpenTree of Life Taxonomy
+
+```{r}
+#some functions to match to the OpenTree of Life taxonomy.
+ simpleCap <- function(x) {
+    s <- strsplit(x, " ")[[1]]
+    paste(toupper(substring(s, 1,1)), substring(s, 2),
+          sep="", collapse=" ")
+  }
+  getOttIds <- function(taxalist, ncores=1, context=NULL){
+    scipen <- options()$scipen
+    digits <- options()$digits
+    options("scipen"=100, "digits"=4)
+    .taxalist <- gsub("_", " ", taxalist)
+    .taxalist <- gsub(" sp$", "", .taxalist)
+    tax <- parallel::mclapply(1:length(taxalist),  function(i) try(rotl::tnrs_match_names(.taxalist[i], do_approximate_matching =FALSE, context_name = context)), mc.cores=ncores)
+    failed <- which(sapply(tax,function(x) class(x)[1]=="try-error"))
+    if(length(failed)>0){
+      tax[failed] <- parallel::mclapply(failed,  function(i) try(rotl::tnrs_match_names(.taxalist[i], do_approximate_matching =TRUE, context_name = context)), mc.cores=ncores)
+    }
+    stillfailed <- which(sapply(tax,function(x) if(class(x)[1]=="try-error"){TRUE} else {is.na(x$ott_id)} ))
+    if(length(stillfailed>0)){
+      tax[stillfailed] <- lapply(stillfailed, function(x) data.frame(search_string=.taxalist[x], unique_name=.taxalist[x], approximate_match=NA, ott_id=NA, is_synonym=NA, flags=NA, number_matches=0))
+    }
+    tax <- do.call(rbind, tax)
+    genspec <- unname(sapply(tax[,2], function(x) paste(strsplit(x, split=" ")[[1]][1:2],collapse=" ")))
+    genspec <- gsub(" (genus", " sp.", genspec, fixed=TRUE)
+    genspec <- gsub(" NA", " sp.", genspec, fixed=TRUE)
+    if(sum(duplicated(genspec))>0){
+      cat("Dropping duplicated taxa: ", paste(taxalist[duplicated(genspec)], collapse=", "), "\n")
+    }
+    if(sum(is.na(tax$ott_id))>0){
+      cat("No ott ids found for taxa: ", paste(taxalist[is.na(tax$ott_id)], collapse=", "), "\n")
+    }
+    tax_unique <- tax[!(duplicated(genspec) | is.na(tax$ott_id)),]
+    tax_unique$ottids <- as.character(tax_unique$ott_id)
+    options("scipen"=scipen, "digits"=digits)
+    tax_unique[,1] <- gsub(" ", "_", tax_unique[,1])
+    tax_unique[,1] <- sapply(tax_unique[,1], function(x) simpleCap(x))
+    return(tax_unique)
+  }
+  
+  getTaxonomyTable <- function(taxalist, rank="family"){
+  simpleCap <- function(x) {
+    s <- strsplit(x, " ")[[1]]
+    paste(toupper(substring(s, 1,1)), substring(s, 2),
+          sep="", collapse=" ")
+  }
+  getOttIds <- function(taxalist, ncores=1, context=NULL){
+    scipen <- options()$scipen
+    digits <- options()$digits
+    options("scipen"=100, "digits"=4)
+    .taxalist <- gsub("_", " ", taxalist)
+    .taxalist <- gsub(" sp$", "", .taxalist)
+    tax <- parallel::mclapply(1:length(taxalist),  function(i) try(rotl::tnrs_match_names(.taxalist[i], do_approximate_matching =FALSE, context_name = context)), mc.cores=ncores)
+    failed <- which(sapply(tax,function(x) class(x)[1]=="try-error"))
+    if(length(failed)>0){
+      tax[failed] <- parallel::mclapply(failed,  function(i) try(rotl::tnrs_match_names(.taxalist[i], do_approximate_matching =TRUE, context_name = context)), mc.cores=ncores)
+    }
+    stillfailed <- which(sapply(tax,function(x) if(class(x)[1]=="try-error"){TRUE} else {is.na(x$ott_id)} ))
+    if(length(stillfailed>0)){
+      tax[stillfailed] <- lapply(stillfailed, function(x) data.frame(search_string=.taxalist[x], unique_name=.taxalist[x], approximate_match=NA, ott_id=NA, is_synonym=NA, flags=NA, number_matches=0))
+    }
+    tax <- do.call(rbind, tax)
+    genspec <- unname(sapply(tax[,2], function(x) paste(strsplit(x, split=" ")[[1]][1:2],collapse=" ")))
+    genspec <- gsub(" (genus", " sp.", genspec, fixed=TRUE)
+    genspec <- gsub(" NA", " sp.", genspec, fixed=TRUE)
+    if(sum(duplicated(genspec))>0){
+      cat("Dropping duplicated taxa: ", paste(taxalist[duplicated(genspec)], collapse=", "), "\n")
+    }
+    if(sum(is.na(tax$ott_id))>0){
+      cat("No ott ids found for taxa: ", paste(taxalist[is.na(tax$ott_id)], collapse=", "), "\n")
+    }
+    tax_unique <- tax[!(duplicated(genspec) | is.na(tax$ott_id)),]
+    tax_unique$ottids <- as.character(tax_unique$ott_id)
+    options("scipen"=scipen, "digits"=digits)
+    tax_unique[,1] <- gsub(" ", "_", tax_unique[,1])
+    tax_unique[,1] <- sapply(tax_unique[,1], function(x) simpleCap(x))
+    return(tax_unique)
+  }
+  otts <- getOttIds(taxalist)
+  taxonomies <- lapply(otts$ott_id, function(x) rotl::taxonomy_taxon_info(x, include_lineage = TRUE))
+  taxonomies <- lapply(taxonomies, function(x) do.call(rbind, x[[1]]$lineage))
+  taxonomies <- lapply(taxonomies, function(x) x[x[,"rank"]==rank,])
+  taxtable <- do.call(rbind, taxonomies)
+  return(taxtable)
+}
+```
+
+Match the names to the Open Tree of Life taxonomy to match it to the names on the tree:
+```{r}
+tree$tip.label <- gsub(" ", "_", tree$tip.label)
+ott_table <- getOttIds(tree$tip.label, ncores=30)
+saveRDS(ott_table, file="../output/ott_table_tree.rds")
+```
+
+
+```{r}
+ott_table <- readRDS(file="../output/ott_table_tree.rds")
+# Function to get the taxonomy
+otts <- ott_table
+rank <- "class"
+.taxonomies <- mclapply(otts[,'ott_id'], function(x) rotl::taxonomy_taxon_info(x, include_lineage = TRUE), mc.cores=10)
+taxonomies <- lapply(.taxonomies, function(x) do.call(rbind, x[[1]]$lineage))
+ranks <- c("genus", "family", "infraorder", "order", "superorder", "subclass", "class", "superclass", "subphylum", "phylum")
+taxtable <- data.frame(matrix(NA, nrow=length(taxonomies), ncol=length(ranks)))
+colnames(taxtable) <- ranks
+taxtable$species <- otts[,'unique_name']
+for(j in 1:length(ranks)){
+  for(i in 1:length(taxonomies)){
+  log.test <- unlist(taxonomies[[i]][,'rank'])==ranks[j]
+  if(any(log.test)){
+    taxtable[i, ranks[j]] <- taxonomies[[i]][log.test, "name"][[1]]
+  } else {
+    taxtable[i, ranks[j]] <-NA
+  }
+}
+}
+saveRDS(taxtable, "../output/ott_tax_tree_table.rds")
+```
+
+```{r}
+#Read taxonomy table back in
+ott_table <- readRDS(file="../output/ott_table_tree.rds")
+tax_table <- readRDS("../output/ott_tax_tree_table.rds")
+otttax_table <- cbind(ott_table, tax_table)
+colnames(otttax_table)[2] <- "ott_name"
+tree <- readRDS("../output/allchordates_forLaura.rds")
+td <- make.treedata(tree, otttax_table)
+td$dat$tip_name <- td$phy$tip.label
+saveRDS(td, file="../output/matched_tree_ott.rds")
+```
+
+
