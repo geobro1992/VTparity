@@ -53,7 +53,8 @@ You can also embed plots, for example:
 
 ```{r pressure, echo=FALSE}
 completetd <- filter(td, !is.na(adMort), !is.na(lnSize), !is.na(juvMort))
-terntd <- readRDS("../output/terntd72522.RDS")
+#source("./make_TernaryData.R")
+terntd <- readRDS("../output/terntd80822.RDS")
 completetd <- filter(terntd, !is.na(totT))
 
 counts_complete <- round(count_ambiguous(completetd$dat$ddat, 16),0)
@@ -134,6 +135,7 @@ plotTernaryCounts(counts_ambiguous, 4, levels=1, col=terncols2)
 Load model fits and select model for reconstructions.
 
 ```{r}
+#source("")#model fits
 fits <- readRDS("../output/Fits_6_12_22.RDS")
 recon_model <- fits$repmode_all
 ###########Plots for model fits

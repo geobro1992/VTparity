@@ -1,0 +1,1131 @@
+---
+title: "VTParity Final Analysis"
+output: html_notebook
+---
+
+Loading packages and data files. 
+
+```{r}
+#rm(list=ls(all=TRUE))
+library(shiftPlot)
+library(ape)
+library(treeplyr)
+library(rotl)
+library(castor)
+library(geiger)
+library(phytools)
+library(phylolm)
+library(rphylopic)
+library(Ternary)
+library(Rphylopars)
+library(optimParallel)
+library(tricolore)
+library(colorspace)
+#dat <- read.csv("../datasets/vtparity.csv")
+#td0 <- readRDS("../output/chordatedata_matched_new.rds")
+#newmass <- readRDS("../output/NB_massEst_NoOutliers.RDS")
+#mergemass <- left_join(td0$dat, newmass)
+#mergemass <- mutate(mergemass, lnSize=ifelse(is.na(logMass)==TRUE, logEstMass/3, logMass/3))
+#mergemass$lnSize[mergemass$class=="Actinopterygii" & is.na(mergemass$lnSize)] <- (3.0904 * mergemass$svl[mergemass$class=="Actinopterygii" & is.na(mergemass$lnSize)]^0.007)/3
+#mergemass$species <- td0$phy$tip.label
+#td <- make.treedata(td0$phy, mergemass)
+getwd()
+td <-readRDS("../output/chordatedata_matched_estSizeComplete.rds")
+```
+
+```{r}
+#Data patches
+td$dat$repmode[td$dat$family=="Plethodontidae" & !is.na(td$dat$repmode) & td$dat$repmode==1] <- 0
+td$dat$svl[td$phy$tip.label=="Plethodon_cinereus"] <- 112
+#td$dat$Terr[td$phy$tip.label=="Desmognathus_ocoee"] <- NA
+#td$dat$Terr[td$phy$tip.label=="Desmognathus_wrighti"] <- 1
+#td$dat$Terr[td$phy$tip.label=="Desmognathus_organi"] <- 1
+#td$dat$Terr[td$phy$tip.label=="Desmognathus_ochrophaeus"] <- 1
+#td$dat$Terr[td$phy$tip.label=="Desmognathus_orestes"] <- 1
+#td$dat$Terr[grep("Plethodon_", td$phy$tip.label)] <- 1
+#td$dat$Terr[grep("Oedipina_", td$phy$tip.label)] <- 1
+#td$dat$Terr[grep("Batrachoseps_", td$phy$tip.label)] <- 1
+#td$dat$Terr[grep("Bolitoglossa_", td$phy$tip.label)] <- 1
+#td$dat$Terr[grep("Aneides_", td$phy$tip.label)] <- 1
+#td$dat$Terr[grep("Thorius_", td$phy$tip.label)] <- 1
+#td$dat$Terr[grep("Dendrotriton_", td$phy$tip.label)] <- 1
+#td$dat$Terr[grep("Chiropterotriton_", td$phy$tip.label)] <- 1
+#td$dat$Terr[grep("Cryptotriton_", td$phy$tip.label)] <- 1
+#td$dat$Terr[grep("Nototriton_", td$phy$tip.label)] <- 1
+#td$dat$Terr[grep("Pseudoeurycea_", td$phy$tip.label)] <- 1
+td$dat$AdTerr[grep("Pipa_", td$phy$tip.label)] <- 0
+td$dat$Terr[grep("Pipa_", td$phy$tip.label)] <- 0
+td$dat$species <- td$phy$tip.label
+```
+
+
+
+Ternary Gradient Analysis
+
+```{r}
+source("./phylotern/phyloternFunctions.R")
+```
+
+```{r}
+#td$dat$adMort[td$dat$adMort < 0] <- 0.00990
+completetd <- filter(td, !is.na(adMort), !is.na(lnSize), !is.na(juvMort))
+completeRanges <- c(diff(quantile(td$dat$lnSize, c(0, 1), na.rm=TRUE)), 
+                    diff(quantile(td$dat$adMort, c(0, 0.9), na.rm=TRUE)),
+                    diff(quantile(td$dat$juvMort, c(0, 1), na.rm=TRUE)))
+
+
+terntd <- td %>% filter(is.na(lnSize) + is.na(adMort) + is.na(juvMort) + is.na(repmode) < 3) %>% mutate(scSize = (lnSize-min(lnSize,na.rm=TRUE))/completeRanges[1], scadMort= ((adMort-min(adMort,na.rm=TRUE)))/completeRanges[2], scjMort=(juvMort-min(juvMort,na.rm=TRUE))/completeRanges[3]) %>% mutate(totT = scSize + scadMort + scjMort)
+quantile(terntd$dat$scadMort, na.rm=TRUE, c(0, 0.01, 0.025, 0.5, 0.975, 0.99, 1))
+quantile(terntd$dat$scSize, na.rm=TRUE, c(0, 0.01, 0.025, 0.5, 0.975, 0.99, 1))
+quantile(terntd$dat$scjMort, na.rm=TRUE, c(0, 0.01, 0.025, 0.5, 0.975, 0.99, 1))
+
+
+totDat <- data.frame("species"=terntd$phy$tip.label, totT = as.vector(terntd[['totT']]))
+totFit <- Rphylopars::phylopars(totDat, force.ultrametric(terntd$phy, "extend"), model="OU")
+terntd$dat$itotT <- totFit$anc_recon[1:nrow(totDat)]
+
+terntd <- terntd %>% mutate(trAdMort = scadMort/itotT, trJMort = scjMort/itotT, trSize = scSize/itotT, totNew=trAdMort + trJMort + trSize)
+
+terntd$dat <- recodeTraits(terntd$dat, c("trAdMort", "trJMort", "trSize"), bins=4)
+terntd <- filter(terntd, ddat!="", ddat!="1&2&3&4&5&6&7&8&9&10&11&12&13&14&15&16")
+terntd$dat$ddat_AqTerr <- layerTrait(terntd[['ddat']], terntd[['Terr']], bins=4)
+terntd$dat$ddat_repmode <- layerTrait(terntd[['ddat']], terntd[['repmode']], bins=4)
+completetd <- filter(terntd, !is.na(totT))
+dplyr::select(terntd, lnSize, adMort, juvMort, scSize, scadMort, scjMort, itotT, totT, trSize, trAdMort, trJMort, repmode, ddat,ddat_AqTerr, ddat_repmode, totNew)
+table(terntd$dat$ddat)
+counts_complete <- round(count_ambiguous(completetd$dat$ddat, 16),0)
+counts_ambiguous <- round(count_ambiguous(terntd$dat$ddat, 16),0)
+#dplyr::select(terntd0, lnSize, adMort, juvMort, scSize, scadMort, scjMort, trSize, trAdMort, trJMort, repmode, ddat)
+```
+
+
+```{r}
+saveRDS(terntd, "../output/terntd80822.RDS")
+```
+
+
+
+```{r}
+pi <- plotTernaryIndex(4)
+terncols <- Tricolore(data.frame(pi$cells), p1="a", p2="b", p3="c")
+terncols <- setNames(terncols$rgb, pi$labels)
+terncols2 <- terncols[as.character(1:16)]
+
+tmp <- plotTernaryIndex(4, col=terncols)
+plot(1:16, 1:16, pch=21, bg=terncols2)
+```
+
+
+```{r}
+plotTernaryCounts(counts_complete, 4, levels=1, col=terncols2)
+plotTernaryCounts(counts_ambiguous, 4, levels=1, col=terncols2)
+```
+
+
+```{r}
+terntd$dat$species <- terntd$phy$tip.label
+
+par(mar=c(0,0,3,0))
+.terntd0 <-filter(terntd, !is.na(trJMort), !is.na(trAdMort), !is.na(trSize)) %>% select(order, class, family,species, trAdMort, trJMort, trSize, repmode, AdTerr, Terr, ddat)
+Ternary::TernaryPlot(alab="Adult Mortality", blab="Juv Mortality", clab="Body Size")
+TernaryPoints(.terntd0$dat[,c("trAdMort", "trJMort", "trSize")], pch=21, cex=0.5, bg=.terntd0$dat$class, col=.terntd0$dat$class)
+
+Ternary::TernaryPlot(alab="Adult Mortality", blab="Juv Mortality", clab="Body Size", main="Reproductive Mode")
+TernaryPoints(.terntd0$dat[,c("trAdMort", "trJMort", "trSize")], pch=21, cex=0.5, bg=.terntd0$dat$repmode+1, col=.terntd0$dat$repmode+1)
+
+Ternary::TernaryPlot(alab="Adult Mortality", blab="Juv Mortality", clab="Body Size", main="Adult Terrestrial")
+TernaryPoints(.terntd0$dat[,c("trAdMort", "trJMort", "trSize")], pch=21, cex=0.5, bg=.terntd0$dat$AdTerr+1, col=.terntd0$dat$AdTerr+1)
+par(mar=c(0,0,3,0))
+Ternary::TernaryPlot(alab="Adult Mortality", blab="Juv Mortality", clab="Body Size", main="Juv Terrestrial")
+TernaryPoints(.terntd0$dat[,c("trAdMort", "trJMort", "trSize")], pch=21, cex=0.5, bg=.terntd0$dat$Terr+1, col=.terntd0$dat$Terr+1)
+
+par(mfrow=c(2,3))
+Ternary::TernaryPlot(alab="Adult Mortality", blab="Juv Mortality", clab="Body Size", main="Sharks")
+.terntd <- filter(.terntd0, order=="Sharks")
+TernaryPoints(.terntd$dat[,c("trAdMort", "trJMort", "trSize")], pch=21, cex=0.5, bg=.terntd$dat$repmode+1, col=.terntd$dat$repmode+1)
+
+Ternary::TernaryPlot(alab="Adult Mortality", blab="Juv Mortality", clab="Body Size", main="Reptilia")
+.terntd <- filter(.terntd0, class=="Reptilia")
+TernaryPoints(.terntd$dat[,c("trAdMort", "trJMort", "trSize")], pch=21, cex=0.5, bg=.terntd$dat$repmode+1, col=.terntd$dat$repmode+1)
+
+Ternary::TernaryPlot(alab="Adult Mortality", blab="Juv Mortality", clab="Body Size", main="Aves")
+.terntd <- filter(.terntd0, class=="Aves")
+TernaryPoints(.terntd$dat[,c("trAdMort", "trJMort", "trSize")], pch=21, cex=0.5, bg=.terntd$dat$repmode+1, col=.terntd$dat$repmode+1)
+
+Ternary::TernaryPlot(alab="Adult Mortality", blab="Juv Mortality", clab="Body Size", main="Amphibia")
+.terntd <- filter(.terntd0, class=="Amphibia")
+TernaryPoints(.terntd$dat[,c("trAdMort", "trJMort", "trSize")], pch=21, cex=0.5, bg=.terntd$dat$repmode+1, col=.terntd$dat$repmode+1)
+
+Ternary::TernaryPlot(alab="Adult Mortality", blab="Juv Mortality", clab="Body Size", main="Actinopterygii")
+.terntd <- filter(.terntd0, class=="Actinopterygii")
+TernaryPoints(.terntd$dat[,c("trAdMort", "trJMort", "trSize")], pch=21, cex=0.5, bg=.terntd$dat$repmode+1, col=.terntd$dat$repmode+1)
+
+Ternary::TernaryPlot(alab="Adult Mortality", blab="Juv Mortality", clab="Body Size", main="Mammalia")
+.terntd <- filter(.terntd0, class=="Mammalia")
+TernaryPoints(.terntd$dat[,c("trAdMort", "trJMort", "trSize")], pch=21, cex=0.5, bg=.terntd$dat$repmode+1, col=.terntd$dat$repmode+1)
+
+
+Ternary::TernaryPlot(alab="Adult Mortality", blab="Juv Mortality", clab="Body Size", main="Not mammals or birds")
+.terntd <- filter(.terntd0, !class %in% c("Mammalia", "Aves"))
+TernaryPoints(.terntd$dat[,c("trAdMort", "trJMort", "trSize")], pch=21, cex=0.5, bg=.terntd$dat$repmode+1, col=.terntd$dat$repmode+1)
+
+
+#plot(terntd$dat$trAdMort, terntd$dat$trJMort)
+
+```
+
+
+
+```{r}
+rm(td)
+cl <- makeCluster(3, type="FORK")     # set the number of processor cores
+setDefaultCluster(cl=cl) # set 'cl' as default cluster
+
+tree0 <- completetd$phy
+dat0 <- completetd[['ddat']]
+
+lnLfx0 <- make.lnLTernaryGrad(tree0, dat0, bins=4)
+pp <- c(-0.6, 0.7, -0.2, -5, 0.01)
+lnLfx0(pp)
+
+fit0 <- optimParallel(pp , lnLfx0, 
+              lower=c(-10,-10,-10,-10,1e-8), upper=c(10,10,10,10,100), 
+              parallel=list(loginfo=TRUE))
+
+tree1 <- terntd$phy
+dat1 <- terntd[['ddat']]
+
+lnLfx1 <- make.lnLTernaryGrad(tree1, dat1, bins =4)
+lnLfx1(c(0,0,0,0,0.1))
+
+
+fit1 <- optimParallel( par=fit0$par, fn=lnLfx1, 
+                        lower=c(-10,-10,-10,-10, 1e-8),
+                        upper=c( 10, 10, 10, 10, 100), parallel=list(loginfo=TRUE))
+
+```
+
+
+```{r}
+q0 <- plotTernaryGradient(tree0, fit0$par[1:4], fit0$par[5], bins=4, line.weight=100)
+q1 <- plotTernaryGradient(tree1, fit1$par[1:4], fit1$par[5], bins=4, line.weight=100)
+
+#rm(tree0)
+#rm(dat0)
+#rm(tree1)
+#rm(dat1)
+```
+```{r}
+par(mar=c(0,0,0,0), mfrow=c(3,4))
+#######SHARKS
+taxon <- "Sharks"
+.taxatd <- filter(terntd, class==taxon)
+.chDF <- data.frame("species"=.taxatd$phy$tip.label, .taxatd$dat$ddat)
+rownames(.chDF) <- NULL
+.tip_priors <- get_tippriors(.taxatd$dat$ddat, bins=4, layers=1)
+rownames(.tip_priors) <- .taxatd$phy$tip.label
+.QQ <- r2Q(fit0$par[1:4], fit0$par[5], bins = 4)
+.simmap <- make.simmap(.taxatd$phy, .tip_priors, model = "ARD", Q=.QQ)
+par(mfrow=c(1,2))
+plotSimmap(.simmap, ftype="off", colors = terncols)
+.comp_taxatd <- filter(.taxatd, !is.na(trAdMort) & !is.na(trSize) & !is.na(trJMort)) %>% select(., trAdMort,  trJMort, trSize)
+.col_dat <-Tricolore(.comp_taxatd$dat, p1="trAdMort", p2="trJMort", p3="trSize")
+#Ternary::TernaryPlot(alab="Adult Mortality", blab="Juv Mortality", clab="Body Size", main="Sharks")
+.coltmp <- make.transparent(.col_dat$rgb, 0.5)
+.counts <- count
+plotTernaryCounts(.simmap, 4, levels=1, col=terncols2)
+TernaryPoints(.comp_taxatd$dat, pch=21, cex=1,col=.coltmp,bg=.coltmp) 
+
+taxon <- "Actinopterygii"
+.taxatd <- filter(terntd, class==taxon)
+.chDF <- data.frame("species"=.taxatd$phy$tip.label, .taxatd$dat$ddat)
+rownames(.chDF) <- NULL
+.tip_priors <- get_tippriors(.taxatd$dat$ddat, bins=4, layers=1)
+rownames(.tip_priors) <- .taxatd$phy$tip.label
+.QQ <- r2Q(fit0$par[1:4], fit0$par[5], bins = 4)
+.simmap <- make.simmap(.taxatd$phy, .tip_priors, model = "ARD", Q=.QQ)
+par(mfrow=c(1,2))
+plotSimmap(.simmap, ftype="off", colors = terncols)
+.comp_taxatd <- filter(.taxatd, !is.na(trAdMort) & !is.na(trSize) & !is.na(trJMort)) %>% select(., trAdMort,  trJMort, trSize)
+.col_dat <-Tricolore(.comp_taxatd$dat, p1="trAdMort", p2="trJMort", p3="trSize")
+#Ternary::TernaryPlot(alab="Adult Mortality", blab="Juv Mortality", clab="Body Size", main="Sharks")
+.coltmp <- make.transparent(.col_dat$rgb, 0.5)
+.counts <- count
+plotTernaryCounts(.simmap, 4, levels=1, col=terncols2)
+TernaryPoints(.comp_taxatd$dat, pch=21, cex=1,col=.coltmp,bg=.coltmp) 
+
+taxon <- "Amphibia"
+.taxatd <- filter(terntd, class==taxon)
+.chDF <- data.frame("species"=.taxatd$phy$tip.label, .taxatd$dat$ddat)
+rownames(.chDF) <- NULL
+.tip_priors <- get_tippriors(.taxatd$dat$ddat, bins=4, layers=1)
+rownames(.tip_priors) <- .taxatd$phy$tip.label
+.QQ <- r2Q(fit0$par[1:4], fit0$par[5], bins = 4)
+.simmap <- make.simmap(.taxatd$phy, .tip_priors, model = "ARD", Q=.QQ)
+par(mfrow=c(1,2))
+plotSimmap(.simmap, ftype="off", colors = terncols)
+.comp_taxatd <- filter(.taxatd, !is.na(trAdMort) & !is.na(trSize) & !is.na(trJMort)) %>% select(., trAdMort,  trJMort, trSize)
+.col_dat <-Tricolore(.comp_taxatd$dat, p1="trAdMort", p2="trJMort", p3="trSize")
+#Ternary::TernaryPlot(alab="Adult Mortality", blab="Juv Mortality", clab="Body Size", main="Sharks")
+.coltmp <- make.transparent(.col_dat$rgb, 0.5)
+.counts <- count
+plotTernaryCounts(.simmap, 4, levels=1, col=terncols2)
+TernaryPoints(.comp_taxatd$dat, pch=21, cex=1,col=.coltmp,bg=.coltmp) 
+
+
+taxon <- "Reptilia"
+.taxatd <- filter(terntd, class==taxon)
+.chDF <- data.frame("species"=.taxatd$phy$tip.label, .taxatd$dat$ddat)
+rownames(.chDF) <- NULL
+.tip_priors <- get_tippriors(.taxatd$dat$ddat, bins=4, layers=1)
+rownames(.tip_priors) <- .taxatd$phy$tip.label
+.QQ <- r2Q(fit0$par[1:4], fit0$par[5], bins = 4)
+.simmap <- make.simmap(.taxatd$phy, .tip_priors, model = "ARD", Q=.QQ)
+par(mfrow=c(1,2))
+plotSimmap(.simmap, ftype="off", colors = terncols)
+.comp_taxatd <- filter(.taxatd, !is.na(trAdMort) & !is.na(trSize) & !is.na(trJMort)) %>% select(., trAdMort,  trJMort, trSize)
+.col_dat <-Tricolore(.comp_taxatd$dat, p1="trAdMort", p2="trJMort", p3="trSize")
+#Ternary::TernaryPlot(alab="Adult Mortality", blab="Juv Mortality", clab="Body Size", main="Sharks")
+.coltmp <- make.transparent(.col_dat$rgb, 0.5)
+.counts <- count
+plotTernaryCounts(.simmap, 4, levels=1, col=terncols2)
+TernaryPoints(.comp_taxatd$dat, pch=21, cex=1,col=.coltmp,bg=.coltmp) 
+
+
+
+taxon <- "Mammalia"
+.taxatd <- filter(terntd, class==taxon)
+.chDF <- data.frame("species"=.taxatd$phy$tip.label, .taxatd$dat$ddat)
+rownames(.chDF) <- NULL
+.tip_priors <- get_tippriors(.taxatd$dat$ddat, bins=4, layers=1)
+rownames(.tip_priors) <- .taxatd$phy$tip.label
+.QQ <- r2Q(fit0$par[1:4], fit0$par[5], bins = 4)
+.simmap <- make.simmap(.taxatd$phy, .tip_priors, model = "ARD", Q=.QQ)
+par(mfrow=c(1,2))
+plotSimmap(.simmap, ftype="off", colors = terncols)
+.comp_taxatd <- filter(.taxatd, !is.na(trAdMort) & !is.na(trSize) & !is.na(trJMort)) %>% select(., trAdMort,  trJMort, trSize)
+.col_dat <-Tricolore(.comp_taxatd$dat, p1="trAdMort", p2="trJMort", p3="trSize")
+#Ternary::TernaryPlot(alab="Adult Mortality", blab="Juv Mortality", clab="Body Size", main="Sharks")
+.coltmp <- make.transparent(.col_dat$rgb, 0.5)
+.counts <- count
+plotTernaryCounts(.simmap, 4, levels=1, col=terncols2)
+TernaryPoints(.comp_taxatd$dat, pch=21, cex=1,col=.coltmp,bg=.coltmp) 
+
+taxon <- "Aves"
+.taxatd <- filter(terntd, class==taxon)
+.chDF <- data.frame("species"=.taxatd$phy$tip.label, .taxatd$dat$ddat)
+rownames(.chDF) <- NULL
+.tip_priors <- get_tippriors(.taxatd$dat$ddat, bins=4, layers=1)
+rownames(.tip_priors) <- .taxatd$phy$tip.label
+.QQ <- r2Q(fit0$par[1:4], fit0$par[5], bins = 4)
+.simmap <- make.simmap(.taxatd$phy, .tip_priors, model = "ARD", Q=.QQ)
+par(mfrow=c(1,2))
+plotSimmap(.simmap, ftype="off", colors = terncols)
+.comp_taxatd <- filter(.taxatd, !is.na(trAdMort) & !is.na(trSize) & !is.na(trJMort)) %>% select(., trAdMort,  trJMort, trSize)
+.col_dat <-Tricolore(.comp_taxatd$dat, p1="trAdMort", p2="trJMort", p3="trSize")
+#Ternary::TernaryPlot(alab="Adult Mortality", blab="Juv Mortality", clab="Body Size", main="Sharks")
+.coltmp <- make.transparent(.col_dat$rgb, 0.5)
+.counts <- count
+plotTernaryCounts(.simmap, 4, levels=1, col=terncols2)
+TernaryPoints(.comp_taxatd$dat, pch=21, cex=1,col=.coltmp,bg=.coltmp) 
+```
+
+
+Aquatic & Terrestrial
+
+```{r}
+gc(); rm(totFit); rm(totDat); rm(tree0); rm(tree1); gc();
+cl <- makeCluster(3, type="FORK")     # set the number of processor cores
+setDefaultCluster(cl=cl) # set 'cl' as default cluster
+
+bins <- 4
+tree2 <- completetd$phy
+dat2 <- layerTrait(completetd[['ddat']], completetd[['Terr']], bins)
+
+lnLfx2 <- make.lnL2xTernaryGrad(tree2, dat2, bins =4, model="ARD")
+pp <- c(fit0$par, fit0$par, 0.05, 0.05)
+lnLfx2(pp)
+
+#fit2a <- stats::nlminb(pp , lnLfx2,
+#                       lower=c(-10,-10,-10,-10,  0,-10,-10,-10,-10,  0,  0,  0), 
+#                       upper=c( 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10), 
+#                       control = list(step.min = 1e-04))
+fit2b <- optimParallel( par=pp, fn=lnLfx2, 
+                        lower=c(-10,-10,-10,-10,  1e-8,-10,-10,-10,-10,  1e-8, 1e-8, 1e-8),
+                        upper=c( 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10), parallel=list(loginfo=TRUE))
+
+```
+
+```{r}
+
+q2a <- plotTernaryGradient(tree2, fit2b$par[1:4], fit2b$par[5], bins=4, line.weight=100)
+q2b <- plotTernaryGradient(tree2, fit2b$par[6:9], fit2b$par[10], bins=4, line.weight=100)
+
+```
+
+
+```{r}
+gc(); rm(dat2); rm(tree2); gc();
+bins <- 4
+cl <- makeCluster(3, type="FORK")     # set the number of processor cores
+setDefaultCluster(cl=cl) 
+
+lnLfx3 <- make.lnL2xTernaryGrad(terntd$phy, terntd$dat$ddat_AqTerr, bins =4, model="ARD")
+pp <- c(fit2b$par)
+lnLfx3(pp)
+
+#fit2a <- stats::nlminb(pp , lnLfx2,
+#                       lower=c(-10,-10,-10,-10,  0,-10,-10,-10,-10,  0,  0,  0), 
+#                       upper=c( 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10), 
+#                       control = list(step.min = 1e-04))
+fit3b <- optimParallel( par=pp, fn=lnLfx3, 
+                        lower=c(-10,-10,-10,-10, 1e-8,-10,-10,-10,-10, 1e-8, 1e-8, 1e-8),
+                        upper=c( 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10), parallel=list(loginfo=TRUE))
+```
+
+
+
+
+```{r}
+gc(); rm(dat2); rm(tree2); gc();
+bins <- 4
+cl <- makeCluster(3, type="FORK")     # set the number of processor cores
+setDefaultCluster(cl=cl) 
+
+lnLfx4 <- make.lnL2xTernaryGrad(completetd$phy, completetd$dat$ddat_repmode, bins =4, model="ARD")
+pp <-  c(fit1$par, fit1$par, 0.05, 0.05)
+lnLfx4(pp)
+
+#fit2a <- stats::nlminb(pp , lnLfx2,
+#                       lower=c(-10,-10,-10,-10,  0,-10,-10,-10,-10,  0,  0,  0), 
+#                       upper=c( 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10), 
+#                       control = list(step.min = 1e-04))
+fit4a.2 <- optimParallel( par=pp, fn=lnLfx4, 
+                        lower=c(-10,-10,-10,-10, 1e-8,-10,-10,-10,-10, 1e-8, 1e-8, 1e-8),
+                        upper=c( 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10), parallel=list(loginfo=TRUE))
+```
+
+
+
+
+```{r}
+gc(); rm(dat2); rm(tree2); gc();
+bins <- 4
+cl <- makeCluster(3, type="FORK")     # set the number of processor cores
+setDefaultCluster(cl=cl) 
+
+lnLfx4 <- make.lnL2xTernaryGrad(terntd$phy, terntd$dat$ddat_repmode, bins =4, model="ARD")
+pp <-  fit4a.2$par #c(fit4a$par, fit4a$par, 0.05, 0.05)
+lnLfx4(pp)
+
+#fit2a <- stats::nlminb(pp , lnLfx2,
+#                       lower=c(-10,-10,-10,-10,  0,-10,-10,-10,-10,  0,  0,  0), 
+#                       upper=c( 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10), 
+#                       control = list(step.min = 1e-04))
+fit4b.2 <- optimParallel( par=pp, fn=lnLfx4, 
+                        lower=c(-10,-10,-10,-10, 1e-8,-10,-10,-10,-10, 1e-8, 1e-8, 1e-8),
+                        upper=c( 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10), parallel=list(loginfo=TRUE))
+```
+
+
+
+```{r}
+
+nf <- layout(matrix(c(1,2), ncol=2, nrow=1))
+par(mar=c(0,0,0,0))
+set.seed(1)
+q2b <- plotTernaryGradient(tree2, fit2b$par[1:4], fit2b$par[5], bins=4, line.weight=100, simulate.data=TRUE, simreps=25)
+.simcounts <- round(10*log(table(factor(q2b$simdat$tip_states, 1:16))),0)
+.simcols <- make.transparent(viridis::viridis(max(.simcounts))[.simcounts],0.2)
+TernaryTiles(pi$centers[,1], pi$centers[,2], pi$centers[,3], 4, col=.simcols[(pi$labels)])
+
+q3b <- plotTernaryGradient(tree2, fit2b$par[6:9], fit2b$par[10], bins=4, line.weight=100, simulate.data=TRUE, simreps=25)
+.simcounts <- round(10*log(table(factor(q3b$simdat$tip_states, 1:16))),0)
+.simcols <- make.transparent(viridis::viridis(max(.simcounts))[.simcounts],0.2)
+TernaryTiles(pi$centers[,1], pi$centers[,2], pi$centers[,3], 4, col=.simcols[(pi$labels)])
+
+
+nf <- layout(matrix(c(1,2), ncol=2, nrow=1))
+par(mar=c(0,0,0,0))
+set.seed(1)
+q4a <- plotTernaryGradient(tree2, fit4a$par[1:4], fit4a$par[5], bins=4, line.weight=100, simulate.data=TRUE, simreps=25)
+.simcounts <- round(10*log(table(factor(q4a$simdat$tip_states, 1:16))),0)
+.simcols <- make.transparent(viridis::viridis(max(.simcounts))[.simcounts],0.2)
+TernaryTiles(pi$centers[,1], pi$centers[,2], pi$centers[,3], 4, col=.simcols[(pi$labels)])
+
+q4b <- plotTernaryGradient(tree2, fit4a$par[6:9], fit4a$par[10], bins=4, line.weight=100, simulate.data=TRUE, simreps=25)
+.simcounts <- round(10*log(table(factor(q4b$simdat$tip_states, 1:16))),0)
+.simcols <- make.transparent(viridis::viridis(max(.simcounts))[.simcounts],0.2)
+TernaryTiles(pi$centers[,1], pi$centers[,2], pi$centers[,3], 4, col=.simcols[(pi$labels)])
+
+q4a2 <- plotTernaryGradient(tree2, fits$repmode_complete$par[1:4], fits$repmode_complete$par[5], bins=4, line.weight=100, simulate.data=TRUE, simreps=25)
+.simcounts <- round(10*log(table(factor(q4a$simdat$tip_states, 1:16))),0)
+.simcols <- make.transparent(viridis::viridis(max(.simcounts))[.simcounts],0.2)
+TernaryTiles(pi$centers[,1], pi$centers[,2], pi$centers[,3], 4, col=.simcols[(pi$labels)])
+
+q4b2 <- plotTernaryGradient(tree2, fits$repmode_complete$par[6:9], fits$repmode_complete$par[10], bins=4, line.weight=100, simulate.data=TRUE, simreps=25)
+.simcounts <- round(10*log(table(factor(q4b$simdat$tip_states, 1:16))),0)
+.simcols <- make.transparent(viridis::viridis(max(.simcounts))[.simcounts],0.2)
+TernaryTiles(pi$centers[,1], pi$centers[,2], pi$centers[,3], 4, col=.simcols[(pi$labels)])
+
+q4a3 <- plotTernaryGradient(tree2, fits$repmode_complete$par[1:4], fits$repmode_all$par[5], bins=4, line.weight=100, simulate.data=TRUE, simreps=25)
+.simcounts <- round(10*log(table(factor(q4a$simdat$tip_states, 1:16))),0)
+.simcols <- make.transparent(viridis::viridis(max(.simcounts))[.simcounts],0.2)
+TernaryTiles(pi$centers[,1], pi$centers[,2], pi$centers[,3], 4, col=.simcols[(pi$labels)])
+
+q4b3 <- plotTernaryGradient(tree2, fits$repmode_complete$par[6:9], fits$repmode_all$par[10], bins=4, line.weight=100, simulate.data=TRUE, simreps=25)
+.simcounts <- round(10*log(table(factor(q4b$simdat$tip_states, 1:16))),0)
+.simcols <- make.transparent(viridis::viridis(max(.simcounts))[.simcounts],0.2)
+TernaryTiles(pi$centers[,1], pi$centers[,2], pi$centers[,3], 4, col=.simcols[(pi$labels)])
+
+
+
+q3a <- plotTernaryGradient(tree2, fit4b$par[1:4], fit4b$par[5], bins=4, line.weight=100)
+q3b <- plotTernaryGradient(tree2, fit4b$par[6:9], fit4b$par[10], bins=4, line.weight=100)
+q3a <- plotTernaryGradient(tree2, fit4a.2$par[1:4], fit4a.2$par[5], bins=4, line.weight=100)
+q3b <- plotTernaryGradient(tree2, fit4a.2$par[6:9], fit4a.2$par[10], bins=4, line.weight=100)
+
+
+q3a <- plotTernaryGradient(tree2, fit4b.2$par[1:4], fit4b.2$par[5], bins=4, line.weight=100, simulate.data = TRUE, simreps=10)
+TernaryDensityContour(pi$cells[pi$labels,][q3a$simdat$tip_states,], bandwidth=0.3, col=make.transparent(gray.colors(10, start=0.6, end=0),.4), nlevels=10)
+q3b <- plotTernaryGradient(tree2, fit4b.2$par[6:9], fit4b.2$par[10], bins=4, line.weight=100, simulate.data = TRUE, simreps=10)
+TernaryDensityContour(pi$cells[pi$labels,][q3b$simdat$tip_states,], bandwidth=0.3, col=make.transparent(gray.colors(10, start=0.6, end=0),.4), nlevels=10)
+
+```
+
+```{r}
+fits <- list("global_complete"=fit0, "global_all"=fit1, "aqterr_complete"=fit2b, "aqterr_all"=fit3b, "repmode_complete"=fit4a, "repmode_all"=fit4b)
+saveRDS(fits, "../output/Fits_6_12_22.RDS")
+## ASR's for individual clades under each model.
+```
+
+```{r}
+fits <- readRDS("../output/Fits_6_12_22.RDS")
+```
+
+
+```{r}
+###########Plots for model fits
+terncols2level <- c(lighten(terncols2,0.5), darken(terncols2,0.5))
+names(terncols2level) <- 1:32
+
+#######SHARKS
+set.seed(1)
+taxon <- "Sharks"
+.taxatd <- filter(terntd, class==taxon)
+.chDF <- data.frame("species"=.taxatd$phy$tip.label, .taxatd$dat$ddat)
+rownames(.chDF) <- NULL
+.tip_priors <- get_tippriors(.taxatd$dat$ddat_repmode, bins=4, layers=2)
+rownames(.tip_priors) <- .taxatd$phy$tip.label
+.QQ <- r2Q_2x(fit4a$par, bins = 4)
+.simmap <- make.simmap(.taxatd$phy, .tip_priors, model = "ARD", Q=.QQ)
+
+nf <- layout(matrix(c(1,1,2,3), nrow=2, ncol=2))
+
+plotSimmap(.simmap, ftype="off", colors = terncols2level)
+.comp_taxatd <- filter(.taxatd, !is.na(trAdMort) & !is.na(trSize) & !is.na(trJMort)) %>% select(., trAdMort,  trJMort, trSize, repmode)
+.col_dat <-Tricolore(.comp_taxatd$dat, p1="trAdMort", p2="trJMort", p3="trSize")
+#Ternary::TernaryPlot(alab="Adult Mortality", blab="Juv Mortality", clab="Body Size", main="Sharks")
+.coltmp <- make.transparent(ifelse(.comp_taxatd$dat$repmode==1, darken(.col_dat$rgb,0.5), .col_dat$rgb), 0.4)
+.counts <- table(factor(get_simmap_tips(.simmap),levels=1:32))
+.set1 <- which(.comp_taxatd$dat$repmode==0)
+.set2 <- which(.comp_taxatd$dat$repmode==1)
+.all_set1 <- do.call(rbind, lapply(1:16, function(i) pi$cells[rep(i, .counts[match(pi$labels[i],1:16)]),]))
+.all_set2 <- do.call(rbind, lapply(1:16, function(i) pi$cells[rep(i, .counts[16+match(pi$labels[i],1:16)]),]))
+
+plotTernaryCounts(.counts[1:16], 4, levels=1, col=terncols2level[1:16], offset=0)
+TernaryDensityContour(.all_set1, bandwidth=0.3, col=make.transparent(gray.colors(10, start=0.6, end=0),.4), nlevels=10)
+TernaryPoints(.comp_taxatd$dat[.set1,1:3], pch=21, cex=0.5,col=.coltmp[.set1],bg=.coltmp[.set1]) 
+
+
+plotTernaryCounts(.counts[17:32], 4, levels=1, col=terncols2level[17:32], offset=0)
+TernaryDensityContour(.all_set2, bandwidth=0.3, col=make.transparent(gray.colors(10, start=0.6, end=0),.4), nlevels=10)
+TernaryPoints(.comp_taxatd$dat[.set2,1:3], pch=21, cex=0.5,col=.coltmp[.set2],bg=.coltmp[.set2]) 
+
+```
+
+```{r}
+###########Plots for model fits
+par(mar=c(0,0,0,0), mfrow=c(1,2))
+terncols2level <- c(lighten(terncols2,0.5), darken(terncols2,0.5))
+names(terncols2level) <- 1:32
+
+#######Bony Fish
+set.seed(1)
+taxon <- "Actinopterygii"
+.taxatd <- filter(terntd, class==taxon)
+.chDF <- data.frame("species"=.taxatd$phy$tip.label, .taxatd$dat$ddat)
+rownames(.chDF) <- NULL
+.tip_priors <- get_tippriors(.taxatd$dat$ddat_repmode, bins=4, layers=2)
+rownames(.tip_priors) <- .taxatd$phy$tip.label
+.QQ <- r2Q_2x(fit4a$par, bins = 4)
+.simmap <- make.simmap(.taxatd$phy, .tip_priors, model = "ARD", Q=.QQ)
+
+nf <- layout(matrix(c(1,1,2,3), nrow=2, ncol=2))
+
+plotSimmap(.simmap, ftype="off", colors = terncols2level)
+.comp_taxatd <- filter(.taxatd, !is.na(trAdMort) & !is.na(trSize) & !is.na(trJMort)) %>% select(., trAdMort,  trJMort, trSize, repmode)
+.col_dat <-Tricolore(.comp_taxatd$dat, p1="trAdMort", p2="trJMort", p3="trSize")
+#Ternary::TernaryPlot(alab="Adult Mortality", blab="Juv Mortality", clab="Body Size", main="Sharks")
+.coltmp <- make.transparent(ifelse(.comp_taxatd$dat$repmode==1, darken(.col_dat$rgb,0.5), .col_dat$rgb), 0.4)
+.counts <- table(factor(get_simmap_tips(.simmap),levels=1:32))
+.set1 <- which(.comp_taxatd$dat$repmode==0)
+.set2 <- which(.comp_taxatd$dat$repmode==1)
+.all_set1 <- do.call(rbind, lapply(1:16, function(i) pi$cells[rep(i, .counts[match(pi$labels[i],1:16)]),]))
+.all_set2 <- do.call(rbind, lapply(1:16, function(i) pi$cells[rep(i, .counts[16+match(pi$labels[i],1:16)]),]))
+
+plotTernaryCounts(.counts[1:16], 4, levels=1, col=terncols2level[1:16], offset=0)
+TernaryDensityContour(.all_set1, bandwidth=0.3, col=make.transparent(gray.colors(10, start=0.6, end=0),.4), nlevels=10)
+TernaryPoints(.comp_taxatd$dat[.set1,1:3], pch=21, cex=0.5,col=.coltmp[.set1],bg=.coltmp[.set1]) 
+
+
+plotTernaryCounts(.counts[17:32], 4, levels=1, col=terncols2level[17:32], offset=0)
+TernaryDensityContour(.all_set2, bandwidth=0.3, col=make.transparent(gray.colors(10, start=0.6, end=0),.4), nlevels=10)
+TernaryPoints(.comp_taxatd$dat[.set2,1:3], pch=21, cex=0.5,col=.coltmp[.set2],bg=.coltmp[.set2]) 
+
+```
+
+```{r}
+
+set.seed(1)
+taxon <- "Amphibia"
+.taxatd <- filter(terntd, class==taxon)
+.chDF <- data.frame("species"=.taxatd$phy$tip.label, .taxatd$dat$ddat)
+rownames(.chDF) <- NULL
+.tip_priors <- get_tippriors(.taxatd$dat$ddat_repmode, bins=4, layers=2)
+rownames(.tip_priors) <- .taxatd$phy$tip.label
+.QQ <- r2Q_2x(fit4a$par, bins = 4)
+.simmap <- make.simmap(.taxatd$phy, .tip_priors, model = "ARD", Q=.QQ)
+
+
+nf <- layout(matrix(c(1,1,2,3), nrow=2, ncol=2))
+
+plotSimmap(.simmap, ftype="off", colors = terncols2level)
+.comp_taxatd <- filter(.taxatd, !is.na(trAdMort) & !is.na(trSize) & !is.na(trJMort)) %>% select(., trAdMort,  trJMort, trSize, repmode)
+.col_dat <-Tricolore(.comp_taxatd$dat, p1="trAdMort", p2="trJMort", p3="trSize")
+#Ternary::TernaryPlot(alab="Adult Mortality", blab="Juv Mortality", clab="Body Size", main="Sharks")
+.coltmp <- make.transparent(ifelse(.comp_taxatd$dat$repmode==1, darken(.col_dat$rgb,0.5), .col_dat$rgb), 0.4)
+.counts <- table(factor(get_simmap_tips(.simmap),levels=1:32))
+.set1 <- which(.comp_taxatd$dat$repmode==0)
+.set2 <- which(.comp_taxatd$dat$repmode==1)
+.all_set1 <- do.call(rbind, lapply(1:16, function(i) pi$cells[rep(i, .counts[match(pi$labels[i],1:16)]),]))
+.all_set2 <- do.call(rbind, lapply(1:16, function(i) pi$cells[rep(i, .counts[16+match(pi$labels[i],1:16)]),]))
+
+plotTernaryCounts(.counts[1:16], 4, levels=1, col=terncols2level[1:16], offset=0)
+TernaryDensityContour(.all_set1, bandwidth=0.3, col=make.transparent(gray.colors(10, start=0.6, end=0),.4), nlevels=10)
+TernaryPoints(.comp_taxatd$dat[.set1,1:3], pch=21, cex=0.5,col=.coltmp[.set1],bg=.coltmp[.set1]) 
+
+
+plotTernaryCounts(.counts[17:32], 4, levels=1, col=terncols2level[17:32], offset=0)
+TernaryDensityContour(.all_set2, bandwidth=0.3, col=make.transparent(gray.colors(10, start=0.6, end=0),.4), nlevels=10)
+TernaryPoints(.comp_taxatd$dat[.set2,1:3], pch=21, cex=0.5,col=.coltmp[.set2],bg=.coltmp[.set2]) 
+
+```
+
+
+
+```{r}
+set.seed(1)
+taxon <- "Reptilia"
+.taxatd <- filter(terntd, class==taxon)
+.chDF <- data.frame("species"=.taxatd$phy$tip.label, .taxatd$dat$ddat)
+rownames(.chDF) <- NULL
+.tip_priors <- get_tippriors(.taxatd$dat$ddat_repmode, bins=4, layers=2)
+rownames(.tip_priors) <- .taxatd$phy$tip.label
+.QQ <- r2Q_2x(fit4a$par, bins = 4)
+.simmap <- make.simmap(.taxatd$phy, .tip_priors, model = "ARD", Q=.QQ)
+
+
+
+nf <- layout(matrix(c(1,1,2,3), nrow=2, ncol=2))
+
+plotSimmap(.simmap, ftype="off", colors = terncols2level)
+.comp_taxatd <- filter(.taxatd, !is.na(trAdMort) & !is.na(trSize) & !is.na(trJMort)) %>% select(., trAdMort,  trJMort, trSize, repmode)
+.col_dat <-Tricolore(.comp_taxatd$dat, p1="trAdMort", p2="trJMort", p3="trSize")
+#Ternary::TernaryPlot(alab="Adult Mortality", blab="Juv Mortality", clab="Body Size", main="Sharks")
+.coltmp <- make.transparent(ifelse(.comp_taxatd$dat$repmode==1, darken(.col_dat$rgb,0.5), .col_dat$rgb), 0.4)
+.counts <- table(factor(get_simmap_tips(.simmap),levels=1:32))
+.set1 <- which(.comp_taxatd$dat$repmode==0)
+.set2 <- which(.comp_taxatd$dat$repmode==1)
+.all_set1 <- do.call(rbind, lapply(1:16, function(i) pi$cells[rep(i, .counts[match(pi$labels[i],1:16)]),]))
+.all_set2 <- do.call(rbind, lapply(1:16, function(i) pi$cells[rep(i, .counts[16+match(pi$labels[i],1:16)]),]))
+
+plotTernaryCounts(.counts[1:16], 4, levels=1, col=terncols2level[1:16], offset=0)
+TernaryDensityContour(.all_set1, bandwidth=0.3, col=make.transparent(gray.colors(10, start=0.6, end=0),.4), nlevels=10)
+TernaryPoints(.comp_taxatd$dat[.set1,1:3], pch=21, cex=0.5,col=.coltmp[.set1],bg=.coltmp[.set1]) 
+
+
+plotTernaryCounts(.counts[17:32], 4, levels=1, col=terncols2level[17:32], offset=0)
+TernaryDensityContour(.all_set2, bandwidth=0.3, col=make.transparent(gray.colors(10, start=0.6, end=0),.4), nlevels=10)
+TernaryPoints(.comp_taxatd$dat[.set2,1:3], pch=21, cex=0.5,col=.coltmp[.set2],bg=.coltmp[.set2]) 
+
+```
+
+```{r}
+set.seed(1)
+taxon <- "Mammalia"
+.taxatd <- filter(terntd, class==taxon)
+.chDF <- data.frame("species"=.taxatd$phy$tip.label, .taxatd$dat$ddat)
+rownames(.chDF) <- NULL
+.tip_priors <- get_tippriors(.taxatd$dat$ddat_repmode, bins=4, layers=2)
+rownames(.tip_priors) <- .taxatd$phy$tip.label
+.QQ <- r2Q_2x(fit4a$par, bins = 4)
+.simmap <- make.simmap(.taxatd$phy, .tip_priors, model = "ARD", Q=.QQ)
+
+nf <- layout(matrix(c(1,1,2,3), nrow=2, ncol=2))
+
+plotSimmap(.simmap, ftype="off", colors = terncols2level)
+.comp_taxatd <- filter(.taxatd, !is.na(trAdMort) & !is.na(trSize) & !is.na(trJMort)) %>% select(., trAdMort,  trJMort, trSize, repmode)
+.col_dat <-Tricolore(.comp_taxatd$dat, p1="trAdMort", p2="trJMort", p3="trSize")
+#Ternary::TernaryPlot(alab="Adult Mortality", blab="Juv Mortality", clab="Body Size", main="Sharks")
+.coltmp <- make.transparent(ifelse(.comp_taxatd$dat$repmode==1, darken(.col_dat$rgb,0.5), .col_dat$rgb), 0.4)
+.counts <- table(factor(get_simmap_tips(.simmap),levels=1:32))
+.set1 <- which(.comp_taxatd$dat$repmode==0)
+.set2 <- which(.comp_taxatd$dat$repmode==1)
+.all_set1 <- do.call(rbind, lapply(1:16, function(i) pi$cells[rep(i, .counts[match(pi$labels[i],1:16)]),]))
+.all_set2 <- do.call(rbind, lapply(1:16, function(i) pi$cells[rep(i, .counts[16+match(pi$labels[i],1:16)]),]))
+
+plotTernaryCounts(.counts[1:16], 4, levels=1, col=terncols2level[1:16], offset=0)
+TernaryDensityContour(.all_set1, bandwidth=0.3, col=make.transparent(gray.colors(10, start=0.6, end=0),.4), nlevels=10)
+TernaryPoints(.comp_taxatd$dat[.set1,1:3], pch=21, cex=0.5,col=.coltmp[.set1],bg=.coltmp[.set1]) 
+
+
+plotTernaryCounts(.counts[17:32], 4, levels=1, col=terncols2level[17:32], offset=0)
+TernaryDensityContour(.all_set2, bandwidth=0.3, col=make.transparent(gray.colors(10, start=0.6, end=0),.4), nlevels=10)
+TernaryPoints(.comp_taxatd$dat[.set2,1:3], pch=21, cex=0.5,col=.coltmp[.set2],bg=.coltmp[.set2]) 
+
+```
+
+```{r}
+set.seed(1)
+taxon <- "Aves"
+.taxatd <- filter(terntd, class==taxon)
+.chDF <- data.frame("species"=.taxatd$phy$tip.label, .taxatd$dat$ddat)
+rownames(.chDF) <- NULL
+.tip_priors <- get_tippriors(.taxatd$dat$ddat_repmode, bins=4, layers=2)
+rownames(.tip_priors) <- .taxatd$phy$tip.label
+.QQ <- r2Q_2x(fit4a$par, bins = 4)
+.simmap <- make.simmap(.taxatd$phy, .tip_priors, model = "ARD", Q=.QQ)
+
+nf <- layout(matrix(c(1,1,2,3), nrow=2, ncol=2))
+
+plotSimmap(.simmap, ftype="off", colors = terncols2level)
+.comp_taxatd <- filter(.taxatd, !is.na(trAdMort) & !is.na(trSize) & !is.na(trJMort)) %>% select(., trAdMort,  trJMort, trSize, repmode)
+.col_dat <-Tricolore(.comp_taxatd$dat, p1="trAdMort", p2="trJMort", p3="trSize")
+#Ternary::TernaryPlot(alab="Adult Mortality", blab="Juv Mortality", clab="Body Size", main="Sharks")
+.coltmp <- make.transparent(ifelse(.comp_taxatd$dat$repmode==1, darken(.col_dat$rgb,0.5), .col_dat$rgb), 0.4)
+.counts <- table(factor(get_simmap_tips(.simmap),levels=1:32))
+.set1 <- which(.comp_taxatd$dat$repmode==0)
+.set2 <- which(.comp_taxatd$dat$repmode==1)
+.all_set1 <- do.call(rbind, lapply(1:16, function(i) pi$cells[rep(i, .counts[match(pi$labels[i],1:16)]),]))
+.all_set2 <- do.call(rbind, lapply(1:16, function(i) pi$cells[rep(i, .counts[16+match(pi$labels[i],1:16)]),]))
+
+plotTernaryCounts(.counts[1:16], 4, levels=1, col=terncols2level[1:16], offset=0)
+TernaryDensityContour(.all_set1, bandwidth=0.3, col=make.transparent(gray.colors(10, start=0.6, end=0),.4), nlevels=10)
+TernaryPoints(.comp_taxatd$dat[.set1,1:3], pch=21, cex=0.5,col=.coltmp[.set1],bg=.coltmp[.set1]) 
+
+
+plotTernaryCounts(.counts[17:32], 4, levels=1, col=terncols2level[17:32], offset=0)
+TernaryDensityContour(.all_set2, bandwidth=0.3, col=make.transparent(gray.colors(10, start=0.6, end=0),.4), nlevels=10)
+TernaryPoints(.comp_taxatd$dat[.set2,1:3], pch=21, cex=0.5,col=.coltmp[.set2],bg=.coltmp[.set2]) 
+
+```
+
+
+
+
+```{r}
+.taxatd <- filter(terntd, class=="Sharks")
+.chDF <- data.frame("species"=.taxatd$phy$tip.label, .taxatd$dat$ddat_AqTerr)
+rownames(.chDF) <- NULL
+.tip_priors <- get_tippriors(.taxatd$dat$ddat_AqTerr, bins=4)
+rownames(.tip_priors) <- .taxatd$phy$tip.label
+.QQ <- r2Q_2x(fit3b$par, bins = 4, model="ARD")
+shark_aqterr <- make.simmap(.taxatd$phy, .tip_priors, model = "ARD", Q=.QQ)
+plotSimmap(shark_aqterr, ftype="off", colors = aqtercols)
+```
+
+
+```{r}
+.taxatd <- filter(terntd, class=="")
+.chDF <- data.frame("species"=.taxatd$phy$tip.label, .taxatd$dat$ddat_AqTerr)
+rownames(.chDF) <- NULL
+.tip_priors <- get_tippriors(.taxatd$dat$ddat_AqTerr, bins=4)
+rownames(.tip_priors) <- .taxatd$phy$tip.label
+.QQ <- r2Q_2x(fit3b$par, bins = 4, model="ARD")
+shark_aqterr <- make.simmap(.taxatd$phy, .tip_priors, model = "ARD", Q=.QQ)
+plotSimmap(shark_aqterr, ftype="off", colors = aqtercols)
+```
+
+
+```{r}
+.taxatd <- filter(terntd, class=="Reptilia")
+.chDF <- data.frame("species"=.taxatd$phy$tip.label, .taxatd$dat$ddat_AqTerr)
+rownames(.chDF) <- NULL
+.tip_priors <- get_tippriors(.taxatd$dat$ddat_AqTerr, bins=4)
+rownames(.tip_priors) <- .taxatd$phy$tip.label
+.QQ <- r2Q_2x(fit3b$par, bins = 4, model="ARD")
+reptilia_aqterr <- make.simmap(.taxatd$phy, .tip_priors, model = "ARD", Q=.QQ)
+plotSimmap(reptilia_aqterr, ftype="off", colors = aqtercols)
+```
+
+```{r}
+.taxatd <- filter(terntd, order=="Caudata")
+.chDF <- data.frame("species"=.taxatd$phy$tip.label, .taxatd$dat$ddat_AqTerr)
+rownames(.chDF) <- NULL
+.tip_priors <- get_tippriors(.taxatd$dat$ddat_AqTerr, bins=4)
+rownames(.tip_priors) <- .taxatd$phy$tip.label
+.QQ <- r2Q_2x(fit3b$par, bins = 4, model="ARD")
+caudata_aqterr <- make.simmap(.taxatd$phy, .tip_priors, model = "ARD", Q=.QQ)
+plotSimmap(caudata_aqterr, ftype="off", colors = aqtercols)
+```
+
+```{r}
+.taxatd <- filter(completetd, class=="Reptilia")
+counts <- table(factor(.taxatd$dat$ddat_AqTerr, 1:32))
+plotTernaryCounts(reptilia_aqterr, bins=4, levels=2)
+TernaryPoints(.taxatd$dat[,c("trAdMort", "trJMort", "trSize")], pch=21, cex=0.25, bg=.taxatd$dat$Terr+1, col=.taxatd$dat$Terr+1)
+
+.taxatd <- filter(completetd, class=="Sharks")
+counts <- table(factor(.taxatd$dat$ddat_AqTerr, 1:32))
+plotTernaryCounts(shark_aqterr, bins=4, levels=1)
+TernaryPoints(.taxatd$dat[,c("trAdMort", "trJMort", "trSize")], pch=21, cex=0.25, bg=.taxatd$dat$Terr+1, col=.taxatd$dat$Terr+1)
+
+```
+
+
+
+```{r}
+bins <- 4
+tree2 <- terntd$phy
+dat2 <- layerTrait(terntd[['ddat']], terntd[['Terr']], bins)
+
+bins2 <- bins^2
+bins4 <- 2*bins2
+fitdat <- dat2
+model="ARD"
+Ntips <- length(tree2$tip.label)
+    Nnodes <- tree2$Nnode
+    Nedges <- length(tree2$edge.length)
+    Nstates <- bins2*2
+    tip_priors <- matrix(1e-08/(Nstates - 1), nrow=length(tree2$tip.label), ncol=bins4)
+    for(i in 1:nrow(tip_priors)){
+      if(class(fitdat)=="character"){
+        .states <- as.numeric(strsplit(fitdat[i], "&")[[1]])
+      } else{
+        .states <- fitdat[i]
+      }
+      dens <- (1 - 1e-08)/length(.states)
+      tip_priors[i, .states] <- dens
+    }
+    tree_edge <- as.vector(t(tree2$edge)) - 1
+    edge.length <- tree2$edge.length
+
+    prior_probabilities_per_tip <- as.vector(t(tip_priors))
+    root_prior_type = "max_likelihood"
+    root_prior_probabilities = numeric(0)
+    oldest_age <- -1
+    runtime_out_seconds <- 0
+    exponentiation_accuracy <- 0.001
+    max_polynomials <- 1000
+biTernaryGrad <- function(pp){
+    Q1 <- r2Q(pp[1:4], pp[5], bins=bins)
+    Q2 <- r2Q(pp[6:9], pp[10], bins=bins)
+    DM1 <- DM2 <- matrix(0, nrow=dim(Q1)[1], ncol=dim(Q1)[2])
+    #if(model=="ER"){
+    #  diag(DM1) <- pp[11]
+    #  diag(DM2) <- pp[11]
+    #} 
+    #if(model=="ARD"){
+      diag(DM1) <- pp[11]
+      diag(DM2) <- pp[12]
+    #}
+    #if(model=="Dollo"){
+    #  diag(DM1) <- pp[11]
+    #  diag(DM2) <- 0
+    #}
+    Q <- rbind(cbind(Q1, DM1), cbind(DM2, Q2))
+    transition_matrix <- as.vector(t(Q))
+    lnL0 <- castor:::Mk_loglikelihood_CPP(Ntips=Ntips, Nnodes=Nnodes, Nstates=Nstates, Nedges=Nedges, prior_probabilities_per_tip = prior_probabilities_per_tip,  root_prior_type = root_prior_type, tree_edge=tree_edge, edge_length=edge.length, transition_matrix=transition_matrix,   root_prior=root_prior_probabilities, oldest_age=oldest_age, runtime_out_seconds = runtime_out_seconds, exponentiation_accuracy = exponentiation_accuracy, max_polynomials = max_polynomials)
+  return(lnL0$loglikelihood*-1)
+}
+
+#lnLfx2 <- make.lnL2xTernaryGrad(tree2, dat2, bins =bins, model="ARD")
+biTernaryGrad(c(-0.4, 0.7, -0.2, -5, 0.01,-0.6, 0.7, -0.2, -5, 0.01, 0.05, 0.05))
+
+fit2 <- stats::nlminb(c(-0.4, 0.7, -0.2, 0, 0.01,-0.6, 0.7, -0.2, -5, 0.01, 0.05, 0.05) , biTernaryGrad,               lower=c(-10,-10,-10,-10,0, -10,-10,-10,-10,0,0,0), upper=c(10,10,10,10,10,10,10,10,10,10,100, 100), 
+              control = list(step.min = 1e-04))
+#fit2 <- stats::optim(c(-0.4, 0.7, -0.2, -5, 0.01,-0.6, 0.7, -0.2, -5, 0.01, 0.05, 0.05) , biTernaryGrad)
+
+
+bins <- 4
+tree3 <- .terntd$phy
+dat3 <- as.numeric(layerTrait(.terntd[['ddat']], .terntd[['Terr']], bins))
+
+bins2 <- bins^2
+bins4 <- 2*bins2
+fitdat <- dat3
+fittree <- tree3
+model="ARD"
+Ntips <- length(fittree$tip.label)
+    Nnodes <- fittree$Nnode
+    Nedges <- length(fittree$edge.length)
+    Nstates <- bins2*2
+    tip_priors <- matrix(1e-08/(Nstates - 1), nrow=length(fittree$tip.label), ncol=bins4)
+    for(i in 1:nrow(tip_priors)){
+      if(class(fitdat)=="character"){
+        .states <- as.numeric(strsplit(fitdat[i], "&")[[1]])
+      } else{
+        .states <- fitdat[i]
+      }
+      dens <- (1 - 1e-08)/length(.states)
+      tip_priors[i, .states] <- dens
+    }
+    tree_edge <- as.vector(t(fittree$edge)) - 1
+    edge.length <- fittree$edge.length
+
+    prior_probabilities_per_tip <- as.vector(t(tip_priors))
+    root_prior_type = "max_likelihood"
+    root_prior_probabilities = numeric(0)
+    oldest_age <- -1
+    runtime_out_seconds <- 0
+    exponentiation_accuracy <- 0.001
+    max_polynomials <- 1000
+
+biTernaryGrad <- function(pp){
+    Q1 <- r2Q(pp[1:4], pp[5], bins=bins)
+    Q2 <- r2Q(pp[6:9], pp[10], bins=bins)
+    DM1 <- DM2 <- matrix(0, nrow=dim(Q1)[1], ncol=dim(Q1)[2])
+    #if(model=="ER"){
+    #  diag(DM1) <- pp[11]
+    #  diag(DM2) <- pp[11]
+    #} 
+    #if(model=="ARD"){
+      diag(DM1) <- pp[11]
+      diag(DM2) <- pp[12]
+    #}
+    #if(model=="Dollo"){
+    #  diag(DM1) <- pp[11]
+    #  diag(DM2) <- 0
+    #}
+    Q <- rbind(cbind(Q1, DM1), cbind(DM2, Q2))
+    rownames(Q) <- colnames(Q) <- 1:bins4
+    diag(Q) <- 0
+    diag(Q) <- -1*rowSums(Q)
+    transition_matrix <- as.vector(t(Q))
+    lnL0 <- castor:::Mk_loglikelihood_CPP(Ntips=Ntips, Nnodes=Nnodes, Nstates=Nstates, Nedges=Nedges, prior_probabilities_per_tip = prior_probabilities_per_tip,  root_prior_type = root_prior_type, tree_edge=tree_edge, edge_length=edge.length, transition_matrix=transition_matrix,   root_prior=root_prior_probabilities, oldest_age=oldest_age, runtime_out_seconds = runtime_out_seconds, exponentiation_accuracy = exponentiation_accuracy, max_polynomials = max_polynomials)
+  return(lnL0$loglikelihood*-1)
+}
+
+##lnLfx3 <- make.lnL2xTernaryGrad(tree3, dat3, bins=bins, model="ER")
+biTernaryGrad(c(-0.4, 0.7, -0.2, -5, 0.01,-0.6, 0.7, -0.2, -5, 0.01, 0.05, 0.05))
+
+fit3 <- stats::nlminb(c(-0.4, 0.7, -0.2, 0, 0.01,-0.6, 0.7, -0.2, -5, 0.01, 0.05, 0.05) , biTernaryGrad,               lower=c(-10,-10,-10,-10,0, -10,-10,-10,-10,0,0,0), upper=c(10,10,10,10,10,10,10,10,10,10,100, 100), 
+              control = list(step.min = 1e-04))
+fit3b <- optim(c(0, 0, 0, 0, 0.01, 0, 0, 0, 0, 0.01, 0.05, 0.05) , biTernaryGrad)
+```
+
+```{r}
+q2a <- plotTernaryGradient(tree2, fit2$par[1:4], fit2$par[5], bins=4, line.weight=5)
+q2b <- plotTernaryGradient(tree2, fit2$par[6:9], fit2$par[10], bins=4, line.weight=5)
+q3a <- plotTernaryGradient(tree3, fit3$par[1:4], fit3$par[5], bins=3, line.weight=50)
+q3b <- plotTernaryGradient(tree3, fit3$par[6:9], fit3$par[10], bins=3, line.weight=50)
+q3a <- plotTernaryGradient(tree3, fit3b$par[1:4], fit3b$par[5], bins=3, line.weight=100)
+q3b <- plotTernaryGradient(tree3, fit3b$par[6:9], fit3b$par[10], bins=3, line.weight=100)
+```
+
+
+```{r}
+coln <- c("trAdMort", "trJMort", "trSize")
+
+Ternary::TernaryPlot(alab="Adult Mortality", blab="Juv Mortality", clab="Body Size", main="Class")
+TernaryPoints(completetd$dat[,coln], pch=21, cex=0.35, bg=completetd$dat$class, col=completetd$dat$class)
+
+Ternary::TernaryPlot(alab="Adult Mortality", blab="Juv Mortality", clab="Body Size", main="Reproductive Mode")
+TernaryPoints(completetd$dat[,coln], pch=21, cex=0.35, bg=completetd$dat$repmode+1, col=completetd$dat$repmode+1)
+
+Ternary::TernaryPlot(alab="Adult Mortality", blab="Juv Mortality", clab="Body Size", main="Adult Terrestrial")
+TernaryPoints(completetd$dat[,coln], pch=21, cex=0.35, bg=completetd$dat$AdTerr+1, col=completetd$dat$AdTerr+1)
+
+Ternary::TernaryPlot(alab="Adult Mortality", blab="Juv Mortality", clab="Body Size", main="Juv Terrestrial")
+TernaryPoints(completetd$dat[,coln], pch=21, cex=0.35, bg=completetd$dat$Terr+1, col=completetd$dat$Terr+1)
+
+Ternary::TernaryPlot(alab="Adult Mortality", blab="Juv Mortality", clab="Body Size", main="Sharks")
+.completetd <- filter(completetd, order=="Sharks")
+TernaryPoints(.completetd$dat[,coln], pch=21, cex=0.35, bg=.completetd$dat$repmode+1, col=.completetd$dat$repmode+1)
+
+Ternary::TernaryPlot(alab="Adult Mortality", blab="Juv Mortality", clab="Body Size", main="Reptilia")
+.completetd <- filter(completetd, class=="Reptilia")
+TernaryPoints(.completetd$dat[,coln], pch=21, cex=0.35, bg=.completetd$dat$repmode+1, col=.completetd$dat$repmode+1)
+
+Ternary::TernaryPlot(alab="Adult Mortality", blab="Juv Mortality", clab="Body Size", main="Aves")
+.completetd <- filter(completetd, class=="Aves")
+TernaryPoints(.completetd$dat[,coln], pch=21, cex=0.35, bg=.completetd$dat$repmode+1, col=.completetd$dat$repmode+1)
+
+Ternary::TernaryPlot(alab="Adult Mortality", blab="Juv Mortality", clab="Body Size", main="Amphibia")
+.completetd <- filter(completetd, class=="Amphibia")
+TernaryPoints(.completetd$dat[,coln], pch=21, cex=0.35, bg=.completetd$dat$repmode+1, col=.completetd$dat$repmode+1)
+
+Ternary::TernaryPlot(alab="Adult Mortality", blab="Juv Mortality", clab="Body Size", main="Actinopterygii")
+.completetd <- filter(completetd, class=="Actinopterygii")
+TernaryPoints(.completetd$dat[,coln], pch=21, cex=0.35, bg=.completetd$dat$repmode+1, col=.completetd$dat$repmode+1)
+
+Ternary::TernaryPlot(alab="Adult Mortality", blab="Juv Mortality", clab="Body Size", main="Mammalia")
+.completetd <- filter(completetd, class=="Mammalia")
+TernaryPoints(.completetd$dat[,coln], pch=21, cex=0.35, bg=.completetd$dat$repmode+1, col=.completetd$dat$repmode+1)
+
+
+Ternary::TernaryPlot(alab="Adult Mortality", blab="Juv Mortality", clab="Body Size", main="Not mammals or birds")
+.completetd <- filter(completetd, !class %in% c("Mammalia", "Aves"))
+TernaryPoints(.completetd$dat[,coln], pch=21, cex=0.35, bg=.completetd$dat$repmode+1, col=.completetd$dat$repmode+1)
+
+
+```
+
+```{r}
+terntdold <- td %>% filter(!is.na(juvMort), !is.na(adMort), !is.na(lnSize), !is.na(repmode)) %>% mutate(scSize = scale(lnSize), scadMort=scale(adMort), scjMort=scale(juvMort)) %>% mutate(scSize=scSize-min(scSize, na.rm=TRUE), scadMort=scadMort-min(scadMort, na.rm=TRUE), scjMort=scjMort-min(scjMort, na.rm=TRUE)) %>% mutate(trAdMort = scadMort/(scadMort+scjMort+scSize), trJMort = scjMort/(scadMort+scjMort+scSize), trSize = scSize/(scadMort+scjMort+scSize))
+terntdold$dat$species <- terntdold$phy$tip.label
+terntdold <-filter(terntdold, !is.na(trJMort), !is.na(trAdMort), !is.na(trSize)) #%>% select(order, class, family,species, trAdMort, trJMort, trSize, repmode, AdTerr, Terr)
+
+coln <- c("trAdMort", "trJMort", "trSize")
+
+Ternary::TernaryPlot(alab="Adult Mortality", blab="Juv Mortality", clab="Body Size", main="Class")
+TernaryPoints(terntdold$dat[,coln], pch=21, cex=0.35, bg=terntdold$dat$class, col=terntdold$dat$class)
+
+Ternary::TernaryPlot(alab="Adult Mortality", blab="Juv Mortality", clab="Body Size", main="Reproductive Mode")
+TernaryPoints(terntdold$dat[,coln], pch=21, cex=0.35, bg=terntdold$dat$repmode+1, col=terntdold$dat$repmode+1)
+
+Ternary::TernaryPlot(alab="Adult Mortality", blab="Juv Mortality", clab="Body Size", main="Adult Terrestrial")
+TernaryPoints(terntdold$dat[,coln], pch=21, cex=0.35, bg=terntdold$dat$AdTerr+1, col=terntdold$dat$AdTerr+1)
+
+Ternary::TernaryPlot(alab="Adult Mortality", blab="Juv Mortality", clab="Body Size", main="Juv Terrestrial")
+TernaryPoints(terntdold$dat[,coln], pch=21, cex=0.35, bg=terntdold$dat$Terr+1, col=terntdold$dat$Terr+1)
+
+Ternary::TernaryPlot(alab="Adult Mortality", blab="Juv Mortality", clab="Body Size", main="Sharks")
+.terntdold <- filter(terntdold, order=="Sharks")
+TernaryPoints(.terntdold$dat[,coln], pch=21, cex=0.35, bg=.terntdold$dat$repmode+1, col=.terntdold$dat$repmode+1)
+
+Ternary::TernaryPlot(alab="Adult Mortality", blab="Juv Mortality", clab="Body Size", main="Reptilia")
+.terntdold <- filter(terntdold, class=="Reptilia")
+TernaryPoints(.terntdold$dat[,coln], pch=21, cex=0.35, bg=.terntdold$dat$repmode+1, col=.terntdold$dat$repmode+1)
+
+Ternary::TernaryPlot(alab="Adult Mortality", blab="Juv Mortality", clab="Body Size", main="Aves")
+.terntdold <- filter(terntdold, class=="Aves")
+TernaryPoints(.terntdold$dat[,coln], pch=21, cex=0.35, bg=.terntdold$dat$repmode+1, col=.terntdold$dat$repmode+1)
+
+Ternary::TernaryPlot(alab="Adult Mortality", blab="Juv Mortality", clab="Body Size", main="Amphibia")
+.terntdold <- filter(terntdold, class=="Amphibia")
+TernaryPoints(.terntdold$dat[,coln], pch=21, cex=0.35, bg=.terntdold$dat$repmode+1, col=.terntdold$dat$repmode+1)
+
+Ternary::TernaryPlot(alab="Adult Mortality", blab="Juv Mortality", clab="Body Size", main="Actinopterygii")
+.terntdold <- filter(terntdold, class=="Actinopterygii")
+TernaryPoints(.terntdold$dat[,coln], pch=21, cex=0.35, bg=.terntdold$dat$repmode+1, col=.terntdold$dat$repmode+1)
+
+Ternary::TernaryPlot(alab="Adult Mortality", blab="Juv Mortality", clab="Body Size", main="Mammalia")
+.terntdold <- filter(terntdold, class=="Mammalia")
+TernaryPoints(.terntdold$dat[,coln], pch=21, cex=0.35, bg=.terntdold$dat$repmode+1, col=.terntdold$dat$repmode+1)
+
+
+Ternary::TernaryPlot(alab="Adult Mortality", blab="Juv Mortality", clab="Body Size", main="Not mammals or birds")
+.terntdold <- filter(terntdold, !class %in% c("Mammalia", "Aves"))
+TernaryPoints(.terntdold$dat[,coln], pch=21, cex=0.35, bg=.terntdold$dat$repmode+1, col=.terntdold$dat$repmode+1)
+```
+
+
+
+```{r}
+plotTernaryGradient(tree3, fit3$par[1:4], fit3$par[5],  bins=4, line.weight=100)
+plotTernaryGradient(tree3, fit3$par[6:9], fit3$par[10],  bins=4, line.weight=100)
+Ternary::TernaryPlot(alab="Adult Mortality", blab="Juv Mortality", clab="Body Size", main="Class")
+TernaryPoints(completetd$dat[,c("trSize","trJMort", "trAdMort")], pch=21, cex=0.35, bg=completetd$dat$class, col=completetd$dat$class)
+.terrtd <- filter(completetd, Terr==1)
+.aqtd <- filter(completetd, Terr==0)
+Ternary::TernaryPlot(alab="Adult Mortality", blab="Juv Mortality", clab="Body Size", main="Class")
+TernaryPoints(.terrtd$dat[,c("trSize","trJMort", "trAdMort")], pch=21, cex=0.35, bg=.terrtd$dat$class, col=.terrtd$dat$class)
+Ternary::TernaryPlot(alab="Adult Mortality", blab="Juv Mortality", clab="Body Size", main="Class")
+TernaryPoints(.aqtd$dat[,c("trSize","trJMort", "trAdMort")], pch=21, cex=0.35, bg=.aqtd$dat$class, col=.aqtd$dat$class)
+
+```
+
+```{r}
+#With transitions
+.terntd <- terntd %>% filter(!is.na(totT)) %>% mutate(ddatpm = as.numeric(ddat)+repmode*bins2)# %>% filter(!class %in% c("Mammalia", "Aves"))
+tree <- .terntd$phy
+dat <- .terntd[['ddatpm']]
+bins <- 4
+bins2 <- bins^2
+bins4 <- 2*bins2
+
+biTernaryGrad <- function(pp){
+  Q1 <- r2Q(pp[1:4], pp[5], bins=bins)
+  Q2 <- r2Q(pp[6:9], pp[10], bins=bins)
+  DM1 <- DM2 <- matrix(0, nrow=dim(Q1)[1], ncol=dim(Q1)[2])
+  diag(DM1) <- pp[11]
+  diag(DM2) <- 0
+  Q <- rbind(cbind(Q1, DM1), cbind(DM2, Q2))
+  fitdat <- dat
+  Ntips <- length(tree$tip.label)
+  Nnodes <- tree$Nnode
+  Nedges <- length(tree$edge.length)
+  Nstates <- bins2*2
+  tip_priors <- matrix(1e-08/(Nstates - 1), nrow=length(tree$tip.label), ncol=bins4)
+  for(i in 1:nrow(tip_priors)){
+    tip_priors[i, fitdat[i]] <- 1 - 1e-08
+  }
+  tree_edge <- as.vector(t(tree$edge)) - 1
+  edge.length <- tree$edge.length
+  transition_matrix <- as.vector(t(Q))
+  prior_probabilities_per_tip <- as.vector(t(tip_priors))
+  root_prior_type = "max_likelihood"
+  root_prior_probabilities = numeric(0)
+  oldest_age <- -1
+  runtime_out_seconds <- 0
+  exponentiation_accuracy <- 0.001
+  max_polynomials <- 1000
+  lnL0 <- castor:::Mk_loglikelihood_CPP(Ntips=Ntips, Nnodes=Nnodes, Nstates=Nstates, Nedges=Nedges, prior_probabilities_per_tip = prior_probabilities_per_tip, 
+                                        root_prior_type = root_prior_type, tree_edge <- tree_edge, edge_length=edge.length, transition_matrix=transition_matrix,
+                                        root_prior=root_prior_probabilities, oldest_age=oldest_age, runtime_out_seconds = runtime_out_seconds, 
+                                        exponentiation_accuracy = exponentiation_accuracy, max_polynomials = max_polynomials)
+  return(lnL0$loglikelihood*-1)
+}
+biTernaryGrad(c(0,0,0,0,0.1, 
+                0,0,0,0,0.1,
+                0.05))
+fitTernaryGradFull <- stats::nlminb(c(0,0,0,0,0.1, 
+                                      0,0,0,0,0.1,
+                                      0.05) , biTernaryGrad, 
+                                    lower=c(-10,-10,-10,-10,0, 
+                                            -10,-10,-10,-10,0, 
+                                            0), 
+                                    upper=c(10,10,10,10,100, 
+                                            10,10,10,10,100, 
+                                            100), 
+                                    control = list(step.min = 1e-04))
+
+
+```
+```{r}
+
+plotTernaryGradient(tree3, fitTernaryGradFull$par[1:4], fitTernaryGradFull$par[5],  bins=4, line.weight=100)
+plotTernaryGradient(tree3, fitTernaryGradFull$par[6:9], fitTernaryGradFull$par[10],  bins=4, line.weight=100)
+
+```
+
+```{r}
+source("./phylotern/phyloternFunctions.R")
+lnLfx4 <- make.lnLTernaryGrad(tree, as.character(dat), bins=bins)
+lnLfx4(c(0, 0, 0, 0, 0.01))
+
+
+fit4 <- stats::nlminb(c(0,0,0,0,0.01) , lnLfx4, 
+              lower=c(-10,-10,-10,-10,0), upper=c(10,10,10,10,100), 
+              control = list(step.min = 1e-04))
+
+```
+
+
+```{r}
+plotTernaryGradient(tree, fit4$par[1:4], fit4$par[5],  bins=4, line.weight=100)
+
+```
+
