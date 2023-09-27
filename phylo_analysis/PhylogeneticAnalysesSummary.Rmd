@@ -17,7 +17,7 @@ When you click the **Knit** button a document will be generated that includes bo
 
 ```{r cars}
 #rm(list=ls(all=TRUE))
-library(shiftPlot)
+#library(shiftPlot)
 library(ape)
 library(treeplyr)
 library(rotl)
@@ -25,7 +25,7 @@ library(castor)
 library(geiger)
 library(phytools)
 library(phylolm)
-library(rphylopic)
+#library(rphylopic)
 library(Ternary)
 library(Rphylopars)
 library(optimParallel)
@@ -34,7 +34,7 @@ library(colorspace)
 library(xtable)
 library(UpSetR)
 library(ComplexUpset)
-setwd("~/repos/vtparity_geobro/VTparity/phylo_analysis/")
+setwd("~/repos/vtparity/VTparity/phylo_analysis/")
 #dat <- read.csv("../datasets/vtparity.csv")
 ott_table <- readRDS(file="../output/ott_table_data.rds")
 td <-readRDS("../output/chordatedata_matched_estSizeComplete.rds")
@@ -70,9 +70,10 @@ terncols2 <- terncols[as.character(1:16)]
 
 ```{r}
 par(mar=c(0,0,3,0))
+cladecols <- c("Actinopterygii"="#3498db", "Amphibia"="#2ecc71", "Aves"="#e74c3c", "Mammalia"="#e67e22", "Reptilia"="#f1c40f", "Sharks"="#16a085")
 .terntd0 <-filter(terntd, !is.na(trJMort), !is.na(trAdMort), !is.na(trSize)) %>% select(order, class, family,species, trAdMort, trJMort, trSize, repmode, AdTerr, Terr, ddat)
 Ternary::TernaryPlot(alab="Adult Mortality", blab="Juv Mortality", clab="Body Size")
-TernaryPoints(.terntd0$dat[,c("trAdMort", "trJMort", "trSize")], pch=21, cex=0.5, bg=.terntd0$dat$class, col=.terntd0$dat$class)
+TernaryPoints(.terntd0$dat[,c("trAdMort", "trJMort", "trSize")], pch=21, cex=0.5, bg=cladecols[as.numeric(factor(.terntd0$dat$class))], col=cladecols[as.numeric(factor(.terntd0$dat$class))])
 
 Ternary::TernaryPlot(alab="Adult Mortality", blab="Juv Mortality", clab="Body Size", main="Reproductive Mode")
 TernaryPoints(.terntd0$dat[,c("trAdMort", "trJMort", "trSize")], pch=21, cex=0.5, bg=.terntd0$dat$repmode+1, col=.terntd0$dat$repmode+1)
@@ -136,12 +137,92 @@ Load model fits and select model for reconstructions.
 
 ```{r}
 #source("")#model fits
-fits <- readRDS("../output/Fits_6_12_22.RDS")
-recon_model <- fits$repmode_all
+fits <- readRDS("../output/fits_8132022.rds")
+recon_model <- fits$repmode_complete
 ###########Plots for model fits
 terncols2level <- c(lighten(terncols2,0.5), darken(terncols2,0.5))
 names(terncols2level) <- 1:32
 
+```
+
+```{r}
+
+tree0 <- completetd$phy
+tree1 <- terntd$phy
+
+## Global
+q0 <- plotTernaryGradient(tree0, fits$global_complete$par[1:4], fits$global_complete$par[5], bins=4, line.weight=100, simulate.data=TRUE, simreps=25)
+.simcounts <- round(10*log(table(factor(q0$simdat$tip_states, 1:16))),0)
+.simcols <- make.transparent(viridis::viridis(max(.simcounts))[.simcounts],0.2)
+TernaryTiles(pi$centers[,1], pi$centers[,2], pi$centers[,3], 4, col=.simcols[(pi$labels)])
+
+q1 <- plotTernaryGradient(tree1, fits$global_all$par[1:4], fits$global_all$par[5], bins=4, line.weight=100, simulate.data=TRUE, simreps=25)
+.simcounts <- round(10*log(table(factor(q1$simdat$tip_states, 1:16))),0)
+.simcols <- make.transparent(viridis::viridis(max(.simcounts))[.simcounts],0.2)
+TernaryTiles(pi$centers[,1], pi$centers[,2], pi$centers[,3], 4, col=.simcols[(pi$labels)])
+```
+
+
+```{r}
+## Aquatic Terrestrial
+par(mfrow=c(1,2))
+#pdf('../output/AqTerrTernary.pdf')
+#Aquatic complete cases
+q2a <- plotTernaryGradient(tree0, fits$aqterr_complete$par[1:4], fits$aqterr_complete$par[5], bins=4, line.weight=100, simulate.data=TRUE, simreps=100)
+.simcounts <- round(10*log(table(factor(q2a$simdat$tip_states, 1:16))),0)
+.simcols <- make.transparent(viridis::viridis(max(.simcounts))[.simcounts],0.2)
+TernaryTiles(pi$centers[,1], pi$centers[,2], pi$centers[,3], 4, col=.simcols[(pi$labels)])
+
+#Terrestrial complete cases
+q2b <- plotTernaryGradient(tree0, fits$aqterr_complete$par[6:9], fits$aqterr_complete$par[10], bins=4, line.weight=100, simulate.data=TRUE, simreps=100)
+.simcounts <- round(10*log(table(factor(q2b$simdat$tip_states, 1:16))),0)
+.simcols <- make.transparent(viridis::viridis(max(.simcounts))[.simcounts],0.2)
+TernaryTiles(pi$centers[,1], pi$centers[,2], pi$centers[,3], 4, col=.simcols[(pi$labels)])
+
+
+#Aquatic All
+q3a <- plotTernaryGradient(tree1, fits$aqterr_all$par[1:4], fits$aqterr_all$par[5], bins=4, line.weight=100, simulate.data=TRUE, simreps=100)
+.simcounts <- round(10*log(table(factor(q3a$simdat$tip_states, 1:16))),0)
+.simcols <- make.transparent(viridis::viridis(max(.simcounts))[.simcounts],0.2)
+TernaryTiles(pi$centers[,1], pi$centers[,2], pi$centers[,3], 4, col=.simcols[(pi$labels)])
+
+#Terrestrial all
+q3b <- plotTernaryGradient(tree1, fits$aqterr_all$par[6:9], fits$aqterr_all$par[10], bins=4, line.weight=100, simulate.data=TRUE, simreps=100)
+.simcounts <- round(10*log(table(factor(q3b$simdat$tip_states, 1:16))),0)
+.simcols <- make.transparent(viridis::viridis(max(.simcounts))[.simcounts],0.2)
+TernaryTiles(pi$centers[,1], pi$centers[,2], pi$centers[,3], 4, col=.simcols[(pi$labels)])
+#dev.off()
+```
+
+
+```{r}
+## Reproductive Mode
+par(mfrow=c(1,2))
+#pdf('../output/RepModeTernary.pdf')
+# Repmode 0 - Oviparous complete cases
+q4a <- plotTernaryGradient(tree0, fits$repmode_complete$par[1:4], fits$repmode_complete$par[5], bins=4, line.weight=100, simulate.data=TRUE, simreps=100)
+.simcounts <- round(10*log(table(factor(q4a$simdat$tip_states, 1:16))),0)
+.simcols <- make.transparent(viridis::viridis(max(.simcounts))[.simcounts],0.2)
+TernaryTiles(pi$centers[,1], pi$centers[,2], pi$centers[,3], 4, col=.simcols[(pi$labels)])
+
+# Repmode 1 - Viviparous complete cases
+q4b <- plotTernaryGradient(tree0, fits$repmode_complete$par[6:9], fits$repmode_complete$par[10], bins=4, line.weight=100, simulate.data=TRUE, simreps=100)
+.simcounts <- round(10*log(table(factor(q4b$simdat$tip_states, 1:16))),0)
+.simcols <- make.transparent(viridis::viridis(max(.simcounts))[.simcounts],0.2)
+TernaryTiles(pi$centers[,1], pi$centers[,2], pi$centers[,3], 4, col=.simcols[(pi$labels)])
+
+# Repmode 0 - Oviparous imputed cases
+q5a <- plotTernaryGradient(tree1, fits$repmode_all$par[1:4], fits$repmode_all$par[5], bins=4, line.weight=100, simulate.data=TRUE, simreps=100)
+.simcounts <- round(10*log(table(factor(q5a$simdat$tip_states, 1:16))),0)
+.simcols <- make.transparent(viridis::viridis(max(.simcounts))[.simcounts],0.2)
+TernaryTiles(pi$centers[,1], pi$centers[,2], pi$centers[,3], 4, col=.simcols[(pi$labels)])
+
+# Repmode 1 - Viviparous imputed cases
+q5b <- plotTernaryGradient(tree1, fits$repmode_all$par[6:9], fits$repmode_all$par[10], bins=4, line.weight=100, simulate.data=TRUE, simreps=100)
+.simcounts <- round(10*log(table(factor(q5b$simdat$tip_states, 1:16))),0)
+.simcols <- make.transparent(viridis::viridis(max(.simcounts))[.simcounts],0.2)
+TernaryTiles(pi$centers[,1], pi$centers[,2], pi$centers[,3], 4, col=.simcols[(pi$labels)])
+#dev.off()
 ```
 
 
@@ -437,9 +518,9 @@ library(Rphylopars)
 ftd <- mutate(terntd, na1 = is.na(scSize) + is.na(scadMort) + is.na(scjMort), totMort=scadMort+scjMort, sizeTerr=scSize*Terr) %>% filter(., na1 < 2, !is.na(Terr))
 .df <- data.frame(species=ftd$phy$tip.label, dplyr::select(ftd$dat, scSize, scadMort, scjMort, Terr, sizeTerr, totMort))
 
-#ltrns <- geiger::rescale(ftd$phy, "lambda")
-#P1 <- phylopars(trait_data=.df[,1:4], tree=ftd$phy, pheno_error=FALSE, phylo_correlated=TRUE, pheno_correlated=FALSE, model="lambda")
-#NP1 <- phylopars(trait_data=.df[,1:4], tree=ltrns(0), pheno_error=FALSE, phylo_correlated=TRUE, pheno_correlated=FALSE, model="lambda")
+ltrns <- geiger::rescale(ftd$phy, "lambda")
+P1 <- phylopars(trait_data=.df[,1:4], tree=ftd$phy, pheno_error=FALSE, phylo_correlated=TRUE, pheno_correlated=FALSE, model="lambda")
+NP1 <- phylopars(trait_data=.df[,1:4], tree=ltrns(0), pheno_error=FALSE, phylo_correlated=TRUE, pheno_correlated=FALSE, model="lambda")
 
 ftd$phy <- force.ultrametric(ftd$phy, method="extend")
 pLM1.jm <- phylopars.lm(scjMort ~ scSize*Terr, trait_data=.df, tree=ftd$phy, pheno_error=FALSE, phylo_correlated=TRUE, pheno_correlated=FALSE, model="OU")
@@ -457,16 +538,16 @@ cov2cor(NP1$pars$phylocov)
 ftd <- mutate(terntd, na1 = is.na(scSize) + is.na(scadMort) + is.na(scjMort), totMort=scadMort+scjMort, sizeTerr=scSize*Terr) %>% filter(., na1 < 1, !is.na(Terr))
 .df <- data.frame(species=ftd$phy$tip.label, dplyr::select(ftd$dat, scSize, scadMort, scjMort, Terr, sizeTerr, totMort))
 
-#ltrns <- geiger::rescale(ftd$phy, "lambda")
-#P0 <- phylopars(trait_data=.df[,1:4], tree=ftd$phy, pheno_error=FALSE, phylo_correlated=TRUE, pheno_correlated=FALSE, model="lambda")
-#NP0 <- phylopars(trait_data=.df[,1:4], tree=ltrns(0), pheno_error=FALSE, phylo_correlated=TRUE, pheno_correlated=FALSE, model="lambda")
+ltrns <- geiger::rescale(ftd$phy, "lambda")
+P0 <- phylopars(trait_data=.df[,1:4], tree=ftd$phy, pheno_error=FALSE, phylo_correlated=TRUE, pheno_correlated=FALSE, model="lambda")
+NP0 <- phylopars(trait_data=.df[,1:4], tree=ltrns(0), pheno_error=FALSE, phylo_correlated=TRUE, pheno_correlated=FALSE, model="lambda")
 
 ftd$phy <- force.ultrametric(ftd$phy, method="extend")
 pLM0.jm <- phylopars.lm(scjMort ~ scSize*Terr, trait_data=.df, tree=ftd$phy, pheno_error=FALSE, phylo_correlated=TRUE, pheno_correlated=FALSE, model="OU")
 pLM0.am <- phylopars.lm(scadMort ~ scSize*Terr, trait_data=.df, tree=ftd$phy, pheno_error=FALSE, phylo_correlated=TRUE, pheno_correlated=FALSE, model="OU")
 pLM0.tm <- phylopars.lm(totMort ~ scSize*Terr, trait_data=.df, tree=ftd$phy, pheno_error=FALSE, phylo_correlated=TRUE, pheno_correlated=FALSE, model="OU")
 
-## Non phylogenetic covariance matrix missing up 1
+## Non phylogenetic covariance matrix missing up 0
 cov2cor(P0$pars$phylocov)
 cov2cor(NP0$pars$phylocov)
 #pairs(as.data.frame(dplyr::select(ftd$dat, scSize, scadMort, scjMort)))
@@ -476,18 +557,18 @@ cov2cor(NP0$pars$phylocov)
 ftd <- mutate(terntd, na1 = is.na(scSize) + is.na(scadMort) + is.na(scjMort), totMort=scadMort+scjMort, sizeTerr=scSize*Terr) %>% filter(., na1 < 3, !is.na(Terr))
 .df <- data.frame(species=ftd$phy$tip.label, dplyr::select(ftd$dat, scSize, scadMort, scjMort, Terr, sizeTerr, totMort))
 
-#ltrns <- geiger::rescale(ftd$phy, "lambda")
-#P1 <- phylopars(trait_data=.df[,1:4], tree=ftd$phy, pheno_error=FALSE, phylo_correlated=TRUE, pheno_correlated=FALSE, model="lambda")
-#NP1 <- phylopars(trait_data=.df[,1:4], tree=ltrns(0), pheno_error=FALSE, phylo_correlated=TRUE, pheno_correlated=FALSE, model="lambda")
+ltrns <- geiger::rescale(ftd$phy, "lambda")
+P2 <- phylopars(trait_data=.df[,1:4], tree=ftd$phy, pheno_error=FALSE, phylo_correlated=TRUE, pheno_correlated=FALSE, model="lambda")
+NP2 <- phylopars(trait_data=.df[,1:4], tree=ltrns(0), pheno_error=FALSE, phylo_correlated=TRUE, pheno_correlated=FALSE, model="lambda")
 
 ftd$phy <- force.ultrametric(ftd$phy, method="extend")
 pLM2.jm <- phylopars.lm(scjMort ~ scSize*Terr, trait_data=.df, tree=ftd$phy, pheno_error=FALSE, phylo_correlated=TRUE, pheno_correlated=FALSE, model="OU")
 pLM2.am <- phylopars.lm(scadMort ~ scSize*Terr, trait_data=.df, tree=ftd$phy, pheno_error=FALSE, phylo_correlated=TRUE, pheno_correlated=FALSE, model="OU")
 pLM2.tm <- phylopars.lm(totMort ~ scSize*Terr, trait_data=.df, tree=ftd$phy, pheno_error=FALSE, phylo_correlated=TRUE, pheno_correlated=FALSE, model="OU")
 
-## Non phylogenetic covariance matrix missing up 1
-#cov2cor(P1$pars$phylocov)
-#cov2cor(NP1$pars$phylocov)
+## Non phylogenetic covariance matrix missing up 2
+cov2cor(P2$pars$phylocov)
+cov2cor(NP2$pars$phylocov)
 #pairs(as.data.frame(dplyr::select(ftd$dat, scSize, scadMort, scjMort)))
 ```
 
@@ -496,17 +577,17 @@ ftd <- mutate(terntd, na1 = is.na(scSize) + is.na(scadMort) + is.na(scjMort), to
 .df <- data.frame(species=ftd$phy$tip.label, dplyr::select(ftd$dat, scSize, scadMort, scjMort, Terr, sizeTerr, totMort))
 
 #ltrns <- geiger::rescale(ftd$phy, "lambda")
-#P1 <- phylopars(trait_data=.df[,1:4], tree=ftd$phy, pheno_error=FALSE, phylo_correlated=TRUE, pheno_correlated=FALSE, model="lambda")
-#NP1 <- phylopars(trait_data=.df[,1:4], tree=ltrns(0), pheno_error=FALSE, phylo_correlated=TRUE, pheno_correlated=FALSE, model="lambda")
+P3 <- phylopars(trait_data=.df[,1:4], tree=ftd$phy, pheno_error=FALSE, phylo_correlated=TRUE, pheno_correlated=FALSE, model="lambda")
+NP3 <- phylopars(trait_data=.df[,1:4], tree=ltrns(0), pheno_error=FALSE, phylo_correlated=TRUE, pheno_correlated=FALSE, model="lambda")
 
 ftd$phy <- force.ultrametric(ftd$phy, method="extend")
 pLM3.jm <- phylopars.lm(scjMort ~ scSize*Terr, trait_data=.df, tree=ftd$phy, pheno_error=FALSE, phylo_correlated=TRUE, pheno_correlated=FALSE, model="OU")
 pLM3.am <- phylopars.lm(scadMort ~ scSize*Terr, trait_data=.df, tree=ftd$phy, pheno_error=FALSE, phylo_correlated=TRUE, pheno_correlated=FALSE, model="OU")
 pLM3.tm <- phylopars.lm(totMort ~ scSize*Terr, trait_data=.df, tree=ftd$phy, pheno_error=FALSE, phylo_correlated=TRUE, pheno_correlated=FALSE, model="OU")
 
-## Non phylogenetic covariance matrix missing up 1
-#cov2cor(P1$pars$phylocov)
-#cov2cor(NP1$pars$phylocov)
+## Non phylogenetic covariance matrix missing up 3
+cov2cor(P3$pars$phylocov)
+cov2cor(NP3$pars$phylocov)
 #pairs(as.data.frame(dplyr::select(ftd$dat, scSize, scadMort, scjMort)))
 ```
 
@@ -587,25 +668,13 @@ summary(pLM3.tm)
 
 
 
-```{r}
-ftd <- mutate(terntd, na1 = is.na(scSize) + is.na(scadMort) + is.na(scjMort)) %>% filter(., na1 < 3)
-.df <- data.frame(species=ftd$phy$tip.label, dplyr::select(ftd$dat, scSize, scadMort, scjMort))
-ltrns <- geiger::rescale(ftd$phy, "lambda")
-P2 <- phylopars(trait_data=.df, tree=ftd$phy, pheno_error=FALSE, phylo_correlated=TRUE, pheno_correlated=FALSE, model="lambda")
-NP2 <- phylopars(trait_data=.df, tree=ltrns(0), pheno_error=FALSE, phylo_correlated=TRUE, pheno_correlated=FALSE, model="lambda")
-## Non phylogenetic covariance matrix missing up 1
-cov2cor(P2$pars$phylocov)
-cov2cor(NP2$pars$phylocov)
-#pairs(as.data.frame(dplyr::select(ftd$dat, scSize, scadMort, scjMort)))
-```
-
-
 # Phylogenetic regressions by clade
 ```{r}
 
 clades <- unique(td$dat$class)
 phyloreg_clade <- function(clade){
   regs <- list()
+  olds <- list()
   ftd <- mutate(terntd, na1 = is.na(scSize) + is.na(scadMort) + is.na(scjMort), totMort=scadMort+scjMort, sizeTerr=scSize*Terr) %>% filter(., na1 < 1, !is.na(Terr))
   ftd <- filter(ftd, class==clade)
   .df <- data.frame(species=ftd$phy$tip.label, dplyr::select(ftd$dat, scSize, scadMort, scjMort, Terr, sizeTerr, totMort))
@@ -615,16 +684,24 @@ phyloreg_clade <- function(clade){
     regs$jm <- phylopars.lm(scjMort ~ scSize*Terr, trait_data=.df, tree=ftd$phy, pheno_error=FALSE, phylo_correlated=TRUE, pheno_correlated=FALSE, model="OU")
     regs$am <- phylopars.lm(scadMort ~ scSize*Terr, trait_data=.df, tree=ftd$phy, pheno_error=FALSE, phylo_correlated=TRUE, pheno_correlated=FALSE, model="OU")
     regs$tm <- phylopars.lm(totMort ~ scSize*Terr, trait_data=.df, tree=ftd$phy, pheno_error=FALSE, phylo_correlated=TRUE, pheno_correlated=FALSE, model="OU")
+    ols$jm <- lm(scjMort ~scSize*Terr, data = .df)
+    ols$am <- lm(scadMort ~scSize*Terr, data = .df)
+    ols$tm <- lm(totMort ~scSize*Terr, data = .df)
   } else {
     regs$jm <- phylopars.lm(scjMort ~ scSize, trait_data=.df, tree=ftd$phy, pheno_error=FALSE, phylo_correlated=TRUE, pheno_correlated=FALSE, model="OU")
     regs$am <- phylopars.lm(scadMort ~ scSize, trait_data=.df, tree=ftd$phy, pheno_error=FALSE, phylo_correlated=TRUE, pheno_correlated=FALSE, model="OU")
     regs$tm <- phylopars.lm(totMort ~ scSize, trait_data=.df, tree=ftd$phy, pheno_error=FALSE, phylo_correlated=TRUE, pheno_correlated=FALSE, model="OU")
+    ols$jm <- lm(scjMort ~scSize, data = .df)
+    ols$am <- lm(scadMort ~scSize, data = .df)
+    ols$tm <- lm(totMort ~scSize, data = .df)
   }
   
-  return(regs)
+  return(list(regs=regs, ols=ols))
 }
 cladefits <- lapply(clades, phyloreg_clade)
 ```
+
+
 ```{r}
 saveRDS(cladefits, file="../output/cladefits.rds")
 
@@ -635,5 +712,42 @@ names(cladefits) <- clades
 lapply(cladefits, function(x) x$am$coefficients[2])
 lapply(cladefits, function(x) x$jm$coefficients[2])
 lapply(cladefits, function(x) x$tm$coefficients[2])
+```
+
+```{r}
+cladefits <- cladefits[levels(factor(ftd$dat$class))]
+par(mfrow=c(3,1), mar=c(5,4,0,0))
+plot(ftd$dat$scSize, ftd$dat$scjMort, pch=22+as.numeric(ftd$dat$Terr), bg=cladecols[as.numeric(factor(ftd$dat$class))], col=cladecols[as.numeric(factor(ftd$dat$class))], cex=0.8, xlab="Size", ylab="Juv Mortality")
+for(i in 1:length(cladefits)){
+  .lm <- cladefits[[i]]$jm
+  if(length(.lm$coefficients)>2){
+    abline(.lm$coef[1], .lm$coef[2], col=i+1, lty=1)
+    abline(.lm$coef[1]+.lm$coef[3], .lm$coef[2]+.lm$coef[4], col=cladecols[i+1], lty=2)
+  } else {
+    abline(.lm, col=i+1)
+  }
+}
+
+plot(ftd$dat$scSize, ftd$dat$scadMort, pch=22+as.numeric(ftd$dat$Terr), bg=cladecols[as.numeric(factor(ftd$dat$class))], col=cladecols[as.numeric(factor(ftd$dat$class))], cex=0.8, xlab="Size", ylab="Adult Mortality")
+for(i in 1:length(cladefits)){
+  .lm <- cladefits[[i]]$am
+  if(length(.lm$coefficients)>2){
+    abline(.lm$coef[1], .lm$coef[2], col=cladecols[i+1], lty=1)
+    abline(.lm$coef[1]+.lm$coef[3], .lm$coef[2]+.lm$coef[4], col=cladecols[i+1], lty=2)
+  } else {
+    abline(.lm, col=i+1)
+  }
+}
+
+plot(ftd$dat$scSize, ftd$dat$totMort, pch=22+as.numeric(ftd$dat$Terr), bg=cladecols[as.numeric(factor(ftd$dat$class))], col=cladecols[as.numeric(factor(ftd$dat$class))], cex=0.8, xlab="Size", ylab="Total Mortality")
+for(i in 1:length(cladefits)){
+  .lm <- cladefits[[i]]$tm
+  if(length(.lm$coefficients)>2){
+    abline(.lm$coef[1], .lm$coef[2], col=i+1, lty=1)
+    abline(.lm$coef[1]+.lm$coef[3], .lm$coef[2]+.lm$coef[4], col=cladecols[i+1], lty=2)
+  } else {
+    abline(.lm, col=i+1)
+  }
+}
 ```
 

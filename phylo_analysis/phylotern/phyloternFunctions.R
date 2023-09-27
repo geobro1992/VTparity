@@ -197,7 +197,7 @@ plotTernaryGradient <- function(tree, r, c, bins, line.weight=10,simulate.data=F
   
   diag(tQ) <- -1*apply(tQ, 1, sum)
   if(simulate.data){
-    simdat <- castor::simulate_mk_model(tree, Q=tQ, Nsimulations = simreps)
+    simdat <- castor::simulate_mk_model(tree, Q=tQ, Nsimulations = simreps, root_probabilities="flat")
     #points(centers, pch=as.character(1:bins2), col="red")
     return(list(simdat=simdat, Q=tQ, indQ=Q))
   } else {
