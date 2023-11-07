@@ -1,0 +1,277 @@
+---
+title: "VTparity - data exploration"
+output: html_notebook
+---
+  
+# Initial packages
+
+```{r}
+#rm(list=ls(all=TRUE))
+library(ape)
+library(treeplyr)
+library(rotl)
+library(castor)
+library(geiger)
+library(phytools)
+library(phylolm)
+dat <- read.csv("../datasets/vtparity.csv")
+getwd()
+```
+
+# III. Exploration with castor and juvenile/adult terrestriality. Doesn't work great!!!
+
+```{r}
+td <- readRDS("../output/chordatedata_matched_estSizeComplete.rds")
+```
+
+
+```{r eval=FALSE}
+
+rmtd <- filter(td, !is.na(repmode))
+priortable <- matrix(0, nrow=length(rmtd$phy$tip.label), ncol=4)
+x <-y <-0
+for(i in 1:nrow(priortable)){
+  if(rmtd[['repmode']][i]==1){
+    if(x==0){
+       priortable[i, c(3,4)] <- c(1,0)
+       x <- 5
+    } else {
+       priortable[i, c(3,4)] <- NA
+    }
+   
+    
+  } else {
+    if(y==0){
+       priortable[i, c(1,2)] <- c(1,0)
+       y <- 5
+    } else {
+    priortable[i, c(1,2)] <- NA
+    }
+  }
+}
+
+```
+
+```{r}
+rmtd <- filter(td, !is.na(repmode))#removing NAs
+
+```
+
+```{r}
+rmMtd <- rmtd#filter(rmtd, !is.na(adMort), !order %in% c("Anura", "Caudata", "Gymnophiona"))
+p1 <- contMap(rmMtd$phy, rmMtd[['repmode']], fsize=0.1)
+p1 <- setMap(p1, c("#3498db", "#f1c40f", "#e74c3c"))
+pdf("./repmode.pdf", height=20, width=20)
+plot(p1, fsize=0.2, type="fan")
+dev.off()
+```
+
+```{r}
+rmASR <- castor::asr_mk_model(rmtd$phy, rmtd[['repmode']]+1, rate_model = "ARD") #ancestral state for reproductive mode
+
+```
+
+```{r}
+#pdf("./repmode.pdf", height=100, width=6)
+plot(rmtd$phy, type="fan", show.tip.label=FALSE, cex=0.2)
+# ancestral state for ad and juv enviornment 
+terr2td <- filter(td, !is.na(AdTerr)) # this has 14k juv and adult, removing NA
+terr2td <- filter(td, !is.na(Terr)) # this has 14k juv and adult, removing NA 
+
+# converting to 00 -- 11
+t2 <- terr2td$dat
+t2['new'] <- NA
+t2$new <- as.integer(case_when(
+      t2$Terr == 1 & t2$AdTerr == 1 ~ "1",
+      t2$Terr == 1 & t2$AdTerr == 0 ~ "2",
+      t2$Terr == 0 & t2$AdTerr == 1 ~ "3",
+      t2$Terr == 0 & t2$AdTerr == 0 ~ "4"
+    ))
+Ad_ASR <- castor::asr_mk_model(tree = terr2td$phy, tip_states = t2$new, rate_model = "ARD")
+solution <- Ad_ASR$transition_matrix
+rownames(solution) <- c("11","10","01","00")
+colnames(solution) <- c("11","10","01","00")
+solution
+```
+
+```{r}
+# meh
+pdf("./JuvAdTerr.pdf", height=100, width=6)
+plot(terr2td$phy, show.tip.label=TRUE, cex=0.2)
+nodelabels(cex=0.25, pie=Ad_ASR$ancestral_likelihoods,piecol=c("blue","green","red","purple"), col="transparent", lwd=0.01)
+tiplabels(cex=0.25, pch=21, bg=c("blue", "green", "red", "purple")[t2[['new']]], col=c("blue", "green", "red", "purple")[t2[['new']]])
+dev.off()
+```
+
+
+```{r}
+pdf("./repmode_full.pdf", height=100, width=6)
+plot(rmtd$phy, show.tip.label=TRUE, cex=0.2)
+nodelabels(cex=0.25, pie=rmASR$ancestral_likelihoods, piecol=c("#bdc3c7", "#e74c3c"), col="transparent", lwd=0.01)
+tiplabels(cex=0.25, pch=21, bg=c("#bdc3c7", "#e74c3c")[rmtd[['repmode']]+1], col=c("#bdc3c7", "#e74c3c")[rmtd[['repmode']]+1])
+#nodelabels(cex=0.25, pie=rmASR$likelihoods, piecol=c("#bdc3c7", "#34495e", "#e74c3c", "#f1c40f"), col="transparent", lwd=0.01)
+#tiplabels(cex=0.25, pch=21, bg=c("#bdc3c7", "#e74c3c")[rmtd[['repmode']]+1], col=c("#bdc3c7", "#e74c3c")[rmtd[['repmode']]+1])
+dev.off()
+```
+
+
+```{r}
+plot(rmtd[['log.AaM']], rmtd[['juvMort']])
+```
+
+
+IV. Phylolm analyses
+Get cases that have reproductive mode
+```{r}
+library(phylolm)
+rmtd <- filter(td, !is.na(repmode))#removing NAs
+table(rmtd$dat$order)
+rmtd <- mutate(rmtd, scjMort = scale(juvMort)[,1], scadMort = scale(adMort)[,1], scSize=scale(lnSize)[,1], lnLongevity=log(longevity))
+rmtd$dat$species <- rmtd$phy$tip.label
+#rmtd$dat$AdTerr[is.na(rmtd$dat$AdTerr) & rmtd$dat$order=="Squamata"] <- 1
+```
+
+
+Some patches and some fits to get predictions
+```{r}
+#rmtd$dat$AdTerr[is.na(rmtd$dat$AdTerr) & rmtd$dat$order=="Squamata"] <- 1
+rmMtd <- filter(rmtd, !is.na(adMort), !is.na(lnSize), !is.na(juvMort))
+## Patches:
+rmMtd$dat$AdTerr[rmMtd$dat$species=="Typhlonectes_compressicauda"] <- 0
+rmMtd$dat$repmode[rmMtd$dat$species=="Uromastyx_acanthinura"] <- 0
+rmMtd$dat$repmode[rmMtd$dat$species=="Pogona_vitticeps"] <- 0
+```
+
+3 way Regression to show negative relationships
+```{r}
+library(Rphylopars)
+ftd <- mutate(td, scjMort = scale(juvMort)[,1], scadMort = scale(adMort)[,1], scSize=scale(lnSize)[,1], lnLongevity=log(longevity)) %>% mutate(., na1 = is.na(scSize) + is.na(scadMort) + is.na(scjMort)) %>% filter(., na1 < 2)
+.df <- data.frame(species=ftd$phy$tip.label, dplyr::select(ftd$dat, scSize, scadMort, scjMort))
+ltrns <- geiger::rescale(ftd$phy, "lambda")
+NP0 <- phylopars(trait_data=.df, tree=ltrns(0), pheno_error=FALSE, phylo_correlated=TRUE, pheno_correlated=FALSE, model="lambda")
+## Non phylogenetic covariance matrix missing up 1
+cov2cor(NP0$pars$phylocov)
+pairs(as.data.frame(dplyr::select(ftd$dat, scSize, scadMort, scjMort)))
+
+```
+
+```{r}
+ftd <- mutate(td, scjMort = scale(juvMort)[,1], scadMort = scale(adMort)[,1], scSize=scale(lnSize)[,1], lnLongevity=log(longevity)) %>% mutate(., na1 = is.na(scSize) + is.na(scadMort) + is.na(scjMort)) %>% filter(., na1 < 3)
+.df <- data.frame(species=ftd$phy$tip.label, dplyr::select(ftd$dat, scSize, scadMort, scjMort))
+PPE.m2 <- phylopars(trait_data=.df, tree=ftd$phy, pheno_error=FALSE, phylo_correlated=TRUE, pheno_correlated=FALSE, model="lambda")
+## Phylogenetic, lambda, missing up to 2
+cov2cor(PPE.m2$pars$phylocov)
+```
+
+```{r}
+ftd <- mutate(td, scjMort = scale(juvMort)[,1], scadMort = scale(adMort)[,1], scSize=scale(lnSize)[,1], lnLongevity=log(longevity)) %>% mutate(., na1 = is.na(scSize) + is.na(scadMort) + is.na(scjMort)) %>% filter(., na1 < 2)
+.df <- data.frame(species=ftd$phy$tip.label, dplyr::select(ftd$dat, scSize, scadMort, scjMort))
+PPE.m1 <- phylopars(trait_data=.df, tree=ftd$phy, pheno_error=FALSE, phylo_correlated=TRUE, pheno_correlated=FALSE, model="lambda")
+## Phylogenetic, lambda, missing up to 1
+cov2cor(PPE.m1$pars$phylocov)
+```
+
+```{r}
+ftd <- mutate(td, scjMort = scale(juvMort)[,1], scadMort = scale(adMort)[,1], scSize=scale(lnSize)[,1], lnLongevity=log(longevity)) %>% mutate(., na1 = is.na(scSize) + is.na(scadMort) + is.na(scjMort)) %>% filter(., na1 == 0)
+.df <- data.frame(species=ftd$phy$tip.label, dplyr::select(ftd$dat, scSize, scadMort, scjMort))
+PPE.m0 <- phylopars(trait_data=.df, tree=ftd$phy, pheno_error=FALSE, phylo_correlated=TRUE, pheno_correlated=FALSE, model="lambda")
+## Phylogenetic, lambda, missing none w/BM
+cov2cor(PPE.m0$pars$phylocov)
+```
+
+```{r}
+ftd <- mutate(td, scjMort = scale(juvMort)[,1], scadMort = scale(adMort)[,1], scSize=scale(lnSize)[,1], lnLongevity=log(longevity)) %>% mutate(., na1 = is.na(scSize) + is.na(scadMort) + is.na(scjMort))
+.df <- data.frame(species=ftd$phy$tip.label, select(ftd$dat, scSize, scadMort, scjMort))
+PPE.m3 <- phylopars(trait_data=.df, tree=ftd$phy, pheno_error=FALSE, phylo_correlated=TRUE, pheno_correlated=FALSE, model="BM")
+## Phylogenetic, no lambda, missing up to 3 imputed with BM
+cov2cor(PPE.m3$pars$phylocov)
+```
+
+
+##############################
+
+
+```{r}
+table(rmMtd$dat$order)
+sum(table(rmMtd$dat$order))
+rownames(rmMtd$dat) <- rmMtd$phy$tip.label
+#glmfit <- phyloglm(repmode ~ scjMort*AdTerr + scadMort*AdTerr, data=rmMtd$dat, phy=rmMtd$phy, btol=20)
+#glmfitstep <- phyloglmstep(repmode ~ scjMort*AdTerr*scadMort*IF, data=rmMtd$dat, phy=rmMtd$phy, btol=20)
+#oglmfit <- glm(repmode ~ 1 + scjMort + scadMort + juvTerr + scjMort:juvTerr + scadMort:juvTerr, data=rmMtd$dat)
+glmfitalt2 <- glm(repmode ~ scadMort*AdTerr + IF + lnLongevity + scjMort*Terr, data=rmMtd$dat)
+glmfitalt3 <- glm(repmode ~Terr*scjMort + lnSize*scjMort + IF*scadMort,  data=rmMtd$dat)
+glmfitalt1 <- phyloglm(repmode ~  Terr*scjMort+ lnSize*scjMort +  IF*scadMort, data=rmMtd$dat, phy=rmMtd$phy, method="logistic_IG10", start.beta=glmfitalt3$coef)
+
+glmfitalt4 <- glm(repmode ~scjMort + scadMort + lnSize,  data=rmMtd$dat)
+glmfitalt5 <- phyloglm(repmode ~scjMort + scadMort + lnSize, data=rmMtd$dat, phy=rmMtd$phy, method="logistic_IG10", start.beta=glmfitalt4$coef)
+
+#glmfitalt4 <- glm(repmode ~scjMort*scadMort + lnSize*scjMort + scadMort*IF,  data=rmMtd$dat)
+#glmfitalt5 <- phyloglm(repmode ~  scjMort*scadMort+ lnSize*scjMort + scadMort*IF, data=rmMtd$dat, phy=rmMtd$phy, method="logistic_IG10", start.beta=glmfitalt4$coef)
+
+```
+
+```{r}
+#summary(glmfitstep)
+summary(glmfitalt1)
+summary(glmfitalt2)
+summary(glmfitalt3)
+summary(glmfitalt4)
+summary(glmfitalt5)
+
+```
+
+```{r}
+plot(rmMtd$dat$lnSize, rmMtd$dat$scjMort, pch=21, bg=rmMtd$dat$Terr+1)
+plot(rmMtd$dat$lnSize, rmMtd$dat$scadMort, pch=21, bg=rmMtd$dat$Terr+1)
+plot(rmMtd$dat$lnSize, rmMtd$dat$scadMort+rmMtd$dat$scjMort, pch=21, bg=rmMtd$dat$Terr+1)
+
+
+```
+
+
+
+Choose one of the models and get predictions in the dataframe rmMtd that we can compare and plot
+```{r}
+model <- glmfitalt2
+rmMtd$dat$predicted  <- round(model$fitted.values,4)
+rmMtd$dat$residual  <- round(model$residuals,4)
+par(mar=c(10,5,1,1))
+boxplot(predicted ~ repmode + class, data=rmMtd$dat, las=2, xlab="", col=c("#f1c40f", "#e74c3c"))
+plot(rmMtd$dat$predicted, jitter(rmMtd$dat$repmode))
+```
+
+
+VI. Making contmaps for clade subsets
+```{r}
+sharktd <-filter(rmMtd, class %in% c("Sharks"))
+p1 <- phytools::contMap(sharktd$phy, sharktd[['repmode']], fsize=0.5)
+p2 <- phytools::contMap(sharktd$phy, sharktd[['predicted']], fsize=0.5)
+p3 <- phytools::contMap(sharktd$phy, abs(sharktd[['residual']]), fsize=0.5)
+p1 <- setMap(p1, c("#3498db", "#f1c40f", "#e74c3c"))
+p2 <- setMap(p2, c("#3498db", "#f1c40f", "#e74c3c"))
+p3 <- setMap(p3, c("#3498db", "#f1c40f", "#e74c3c"))
+#pdf("./sharkpredict.pdf", width=20, height=15)
+par(mfrow=c(1,3))
+plot(p1, ftype="off")
+plot(p2, ftype="off")
+plot(p3, ftype="off")
+#dev.off()
+```
+
+
+```{r}
+amphibtd <-filter(rmMtd, class %in% c("Amphibia","Reptilia"))
+p1 <- phytools::contMap(amphibtd$phy, amphibtd[['repmode']], fsize=0.5, )
+p2 <- phytools::contMap(amphibtd$phy, amphibtd[['predicted']], fsize=0.5)
+p3 <- phytools::contMap(amphibtd$phy, amphibtd[['residual']], fsize=0.5)
+p1 <- setMap(p1, c("#3498db", "#f1c40f", "#e74c3c"))
+p2 <- setMap(p2, c("#3498db", "#f1c40f", "#e74c3c"))
+p3 <- setMap(p3, c("#3498db", "#f1c40f", "#e74c3c"))
+#pdf("./amphibpredict.pdf", width=20, height=15)
+par(mfrow=c(1,3))
+plot(p1)
+plot(p2)
+plot(p3)
+#dev.off()
+```
+
