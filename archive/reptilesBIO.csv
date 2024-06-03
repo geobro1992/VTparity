@@ -1,11 +1,11 @@
 Class,Order,SubOrder,Family,Genus,Species,Location,Adult survival,Max Size,Clutch,Clutches per year,Longevity,AaM,repmode,birth.svl,Terr,AdTerr
-Amphibia,Anura,Anura,Allophrynidae (3),,,,1,,,,,,0,,0,1
-Amphibia,Anura,Anura,Alsodidae (26),,,,1,,,,,,0,,0,1
+Amphibia,Anura,Anura,AllophrynidaeÂ (3),,,,1,,,,,,0,,0,1
+Amphibia,Anura,Anura,AlsodidaeÂ (26),,,,1,,,,,,0,,0,1
 Amphibia,Anura,Anura,Alytidae,Alytes,obstetricans,Temperate,1,50,50,4,18,2,0,,1,1
 Amphibia,Anura,Anura,Arthroleptidae,Arthroleptis,stenodactylus,Tropics,Tapley2009,40,50,1,3,2,0,,1,1
 Amphibia,Anura,Anura,Arthroleptidae,Arthroleptis,poecilonotus,Tropics,1,30,20,3,1,0.25,0,,1,1
 Amphibia,Anura,Anura,Ascaphidae,Ascaphus,truei,Temperate,1,50,60,1,20,8,0,,0,1
-Amphibia,Anura,Anura,Batrachylidae (13),,,,1,,,,,,0,,0,1
+Amphibia,Anura,Anura,BatrachylidaeÂ (13),,,,1,,,,,,0,,0,1
 Amphibia,Anura,Anura,Bombinatoridae,Bombina,orientalis,Temperate,1,60,150,1.75,20,5,0,,0,1
 Amphibia,Anura,Anura,Bombinatoridae,Bombina,bombina,Temperate,1,60,200,1,12,3,0,,0,1
 Amphibia,Anura,Anura,Bombinatoridae,Bombina,variegata,Temperate,1,55,75,1,20,1.5,0,,0,1
@@ -16,20 +16,20 @@ Amphibia,Anura,Anura,Bufonidae,Rhinella,marina,Tropics,1,220,15000,1,15,1.5,0,,0
 Amphibia,Anura,Anura,Bufonidae,Anaxyrus,americanus,Temperate,1,75,6000,1,10,2.5,0,,0,1
 Amphibia,Anura,Anura,Bufonidae,Rhinella,schneideri,Tropics,Arantes 2015,105,2500,1,4,0.95,0,,0,1
 Amphibia,Anura,Anura,Bufonidae,Anaxyrus,quercicus,Temperate,1,25,700,1,2,0.2,0,,0,1
-Amphibia,Anura,Anura,Calyptocephalellidae (5),,,,1,,,,,,0,,0,1
+Amphibia,Anura,Anura,CalyptocephalellidaeÂ (5),,,,1,,,,,,0,,0,1
 Amphibia,Anura,Anura,Centrolenidae,Centrolene,prsoblepon,Tropics,1,35,35,1,5,1,0,,1,1
-Amphibia,Anura,Anura,Ceratobatrachidae (98),,,,1,,,,,,0,,0,1
+Amphibia,Anura,Anura,CeratobatrachidaeÂ (98),,,,1,,,,,,0,,0,1
 Amphibia,Anura,Anura,Ceratophryidae,Lepidobatrachus,laevis,Tropics,1,100,1000,1,10,6,0,,0,1
-Amphibia,Anura,Anura,Ceuthomantidae (4),,,,1,,,,,,0,,0,1
+Amphibia,Anura,Anura,CeuthomantidaeÂ (4),,,,1,,,,,,0,,0,1
 Amphibia,Anura,Anura,Conrauidae,Conraua,goliath,Tropics,1,300,500,3,15,1,0,,0,1
 Amphibia,Anura,Anura,Craugastoridae,Craugasor,augusti,Temperate,1,90,65,2,7,0.5,0,,1,1
-Amphibia,Anura,Anura,Cycloramphidae (36),,,,1,,,,,,0,,0,1
+Amphibia,Anura,Anura,CycloramphidaeÂ (36),,,,1,,,,,,0,,0,1
 Amphibia,Anura,Anura,Dendrobatidae,Dendrobatus,auratus,Tropics,1,30,6,1.5,8,0.75,0,,0,1
 Amphibia,Anura,Anura,Dicroglossidae,Hoplobatrachus,occipitalis,Tropics,1,120,5000,1,11,1,0,,0,1
 Amphibia,Anura,Anura,Dicroglossidae,Nanorana,parkeri,Temperate,Lu2016,50,200,1,11,4,0,,0,1
 Amphibia,Anura,Anura,Eleutherodactylidae,Erythrodactylus,planirostris,Tropics,1,20,20,1,,1,0,,1,1
 Amphibia,Anura,Anura,Eleutherodactylidae,Erythrodactylus,coqui,Tropics,1,50,27,6,3,1,0,,1,1
-Amphibia,Anura,Anura,Heleophrynidae (6),,,,1,,,,,,0,,0,1
+Amphibia,Anura,Anura,HeleophrynidaeÂ (6),,,,1,,,,,,0,,0,1
 Amphibia,Anura,Anura,Hemiphractidae,Flectonotus,fitzgeraldi,Tropics,1,25,3.5,5,2,1,0,,1,1
 Amphibia,Anura,Anura,Hemisotidae,Hyperolus,marmoratus,Tropics,1,40,350,1,5,1,0,,0,1
 Amphibia,Anura,Anura,Hylidae,Osteopilus,septentrionalis,Tropics,1,120,3000,1,7.5,0.75,0,,0,1
@@ -38,7 +38,7 @@ Amphibia,Anura,Anura,Hylidae,Hyla,versicolor,Temperate,1,40,1500,1,7,2,0,,0,1
 Amphibia,Anura,Anura,Hylidae,Hyla,cineria,Temperate,1,55,400,1.1,6,1.5,0,,0,1
 Amphibia,Anura,Anura,Hylidae,Pseudacris,crucifer,Temperate,1,35,700,1,4,2.5,0,,0,1
 Amphibia,Anura,Anura,Hylidae,Acris,gryllus,Temperate,1,25,150,2.5,1,0.25,0,,0,1
-Amphibia,Anura,Anura,Hylodidae (47),,,,1,,,,,,0,,0,1
+Amphibia,Anura,Anura,HylodidaeÂ (47),,,,1,,,,,,0,,0,1
 Amphibia,Anura,Anura,Hyperoliidae,Hyperolius,spp,Tropics,Sinsch2017,30,330,5,3,0.5,0,,0,1
 Amphibia,Anura,Anura,Leiopelmatidae,Leiopelma,pakeka,Temperate,1,45,10,1,33,12.5,0,,1,1
 Amphibia,Anura,Anura,Leptodactylidae,Leptodactylus,latrans,Tropics,Lopez2017,100,3000,1,5,1.25,0,,0,1
@@ -47,19 +47,19 @@ Amphibia,Anura,Anura,Mantellidae,Boophis,spp,Tropics,Tessa2017,50,175,1,6,1.6,0,
 Amphibia,Anura,Anura,Mantellidae,Mantidactylus ,spp,Tropics,Tessa2017,60,20,1,8,3,0,,1,1
 Amphibia,Anura,Anura,Mantellidae,Gephyromantis,spp,Tropics,Tessa2017,45,4,1,7,2.25,0,,1,1
 Amphibia,Anura,Anura,Megophryidae,Megophrys,nasuta,Tropics,1,130,2000,1,6,2.5,0,,0,1
-Amphibia,Anura,Anura,Micrixalidae (24),,,,1,,,,,,0,,0,1
+Amphibia,Anura,Anura,MicrixalidaeÂ (24),,,,1,,,,,,0,,0,1
 Amphibia,Anura,Anura,Microhylidae,Gastrophryne,carolinensis,Temperate,1,30,1000,1,7,1.5,0,,0,1
 Amphibia,Anura,Anura,Myobatrachidae,Geocrinia,laevis,Temperate,Scroggie2012,35,110,1,18,1.5,0,,1,1
 Amphibia,Anura,Anura,Myobatrachidae,Geocrinia,alba,Temperate,1,25,11,1,6,2.5,0,,1,1
 Amphibia,Anura,Anura,Myobatrachidae,Geocrinia,vitellina,Temperate,1,25,10,1,6,2.5,0,,1,1
-Amphibia,Anura,Anura,Nasikabatrachidae (2),,,,,,,,,,0,,0,1
-Amphibia,Anura,Anura,Nyctibatrachidae (39),,,,1,,,,,,0,,0,1
-Amphibia,Anura,Anura,Odontobatrachidae (5),,,,1,,,,,,0,,0,1
+Amphibia,Anura,Anura,NasikabatrachidaeÂ (2),,,,,,,,,,0,,0,1
+Amphibia,Anura,Anura,NyctibatrachidaeÂ (39),,,,1,,,,,,0,,0,1
+Amphibia,Anura,Anura,OdontobatrachidaeÂ (5),,,,1,,,,,,0,,0,1
 Amphibia,Anura,Anura,Odontophrynidae,Odontophrynus,spp,Tropics,Quiroga2015,60,4000,1,4,1,0,,0,1
 Amphibia,Anura,Anura,Pelobatidae,Pelobates,fuscus,Temperate,Jehle1995Eggert1999,80,1800,1,8,3,0,,0,1
 Amphibia,Anura,Anura,Pelodytidae,Pelodytes,punctatus,Temperate,Esteban2004,50,800,1,10,3,0,,0,1
 Amphibia,Anura,Anura,Pelodytidae,Pelodytes,caucasicus,Temperate,1,50,420,1,9,2.5,0,,0,1
-Amphibia,Anura,Anura,Petropedetidae (13),,,,,,,,,,0,,0,1
+Amphibia,Anura,Anura,PetropedetidaeÂ (13),,,,,,,,,,0,,0,1
 Amphibia,Anura,Anura,Phrynobatrachidae,Phrynobatrachus,auritus,Tropics,Taboue2016,30,1000,1,2,0.5,0,,0,1
 Amphibia,Anura,Anura,Pipidae,Xenopus,laevis,Tropics,1,120,10000,1,16,0.5,0,,0,0
 Amphibia,Anura,Anura,Pipidae,Pipa,Pipa,Tropics,1,170,100,1,80,2.5,0,,0,0
@@ -75,14 +75,14 @@ Amphibia,Anura,Anura,Ranidae,Rana,aurora,Temperate,1,90,800,1,13.5,4,0,,0,1
 Amphibia,Anura,Anura,Ranidae,Rana,hotzi,Temperate,Guarino2008,65,500,3,7,4,0,,0,1
 Amphibia,Anura,Anura,Ranidae,Lithobates,sylvaticus,Temperate,1,70,2000,1,4,2.5,0,,0,1
 Amphibia,Anura,Anura,Ranidae,Rana,latastei,Temperate,Guarino2003,75,550,0.5,4,1,0,,0,1
-Amphibia,Anura,Anura,Ranixalidae (18),,,,1,,,,,,0,,0,1
-Amphibia,Anura,Anura,Rhacophoridae (426),,,,1,,,,,,0,,0,1
-Amphibia,Anura,Anura,Rhinodermatidae (3),,,,1,,,,,,0,,0,1
-Amphibia,Anura,Anura,Rhinophrynidae (1),,,,1,,,,,,0,,0,1
+Amphibia,Anura,Anura,RanixalidaeÂ (18),,,,1,,,,,,0,,0,1
+Amphibia,Anura,Anura,RhacophoridaeÂ (426),,,,1,,,,,,0,,0,1
+Amphibia,Anura,Anura,RhinodermatidaeÂ (3),,,,1,,,,,,0,,0,1
+Amphibia,Anura,Anura,RhinophrynidaeÂ (1),,,,1,,,,,,0,,0,1
 Amphibia,Anura,Anura,Scaphiopodidae,Scaphiopus,holbrookii,Desert,1,80,4000,2,7,1.5,0,,0,1
 Amphibia,Anura,Anura,Scaphiopodidae,Scaphiopus,couchii,Desert,1,100,3000,1,13,4,0,,0,1
-Amphibia,Anura,Anura,Sooglossidae (4),,,,1,,,,,,0,,0,1
-Amphibia,Anura,Anura,Strabomantidae (715),,,,1,,,,,,0,,0,1
+Amphibia,Anura,Anura,SooglossidaeÂ (4),,,,1,,,,,,0,,0,1
+Amphibia,Anura,Anura,StrabomantidaeÂ (715),,,,1,,,,,,0,,0,1
 Amphibia,Anura,Anura,Telmatobiidae,Telmatobius,culeus,Tropics,1,130,500,1,10,5,0,,0,1
 Amphibia,Caudata,Caudata,Ambystomatidae,Ambystoma,tigrinum,Temperate,1,250,500,1,25,5,0,,0,0
 Amphibia,Caudata,Caudata,Ambystomatidae,Ambystoma,texanum,Temperate,1,140,500,1,20,2,0,,0,1
@@ -125,16 +125,16 @@ Amphibia,Caudata,Caudata,Salamandridae,Salamandra,salamandra,Temperate,1,200,30,
 Amphibia,Caudata,Caudata,Salamandridae,Salamandrina,perspicillata,Temperate,1,100,35,1,11,4.5,0,,0,1
 Amphibia,Caudata,Caudata,Sirenidae,Siren,lacertina,Temperate,1,700,500,1,25,2,0,,0,0
 Amphibia,Caudata,Caudata,Sirenidae,Siren,intermedia,Temperate,1,430,250,1,25,2,0,,0,0
-Amphibia,Gymnophiona,Gymnophiona,Caeciliidae (44),,,,1,,,,,,,,1,1
-Amphibia,Gymnophiona,Gymnophiona,Chikilidae (4),,,,1,,,,,,,,1,1
+Amphibia,Gymnophiona,Gymnophiona,CaeciliidaeÂ (44),,,,1,,,,,,,,1,1
+Amphibia,Gymnophiona,Gymnophiona,ChikilidaeÂ (4),,,,1,,,,,,,,1,1
 Amphibia,Gymnophiona,Gymnophiona,Dermophiidae,Dermophis,mexicanus,Tropics,Wake1980,300,16,1,14,1,,,1,1
 Amphibia,Gymnophiona,Gymnophiona,Dermophiidae,Geotrypetes,seraphini,Tropics,Scholz 2009,240,3.5,1,4,1,,,1,1
 Amphibia,Gymnophiona,Gymnophiona,Herpelidae,Boulengerula,taitana,Tropics,Malonza and Measey 2005,300,5,1.5,,2,,,1,1
-Amphibia,Gymnophiona,Gymnophiona,Ichthyophiidae (57),,,,1,,,,,,,,1,1
-Amphibia,Gymnophiona,Gymnophiona,Indotyphlidae (24),,,,1,,,,,,,,1,1
-Amphibia,Gymnophiona,Gymnophiona,Rhinatrematidae (13),,,,1,,,,,,,,1,1
-Amphibia,Gymnophiona,Gymnophiona,Scolecomorphidae (6),,,,1,,,,,,,,1,1
-Amphibia,Gymnophiona,Gymnophiona,Siphonopidae (28),,,,1,,,,,,,,1,1
+Amphibia,Gymnophiona,Gymnophiona,IchthyophiidaeÂ (57),,,,1,,,,,,,,1,1
+Amphibia,Gymnophiona,Gymnophiona,IndotyphlidaeÂ (24),,,,1,,,,,,,,1,1
+Amphibia,Gymnophiona,Gymnophiona,RhinatrematidaeÂ (13),,,,1,,,,,,,,1,1
+Amphibia,Gymnophiona,Gymnophiona,ScolecomorphidaeÂ (6),,,,1,,,,,,,,1,1
+Amphibia,Gymnophiona,Gymnophiona,SiphonopidaeÂ (28),,,,1,,,,,,,,1,1
 Amphibia,Gymnophiona,Gymnophiona,Typhlonectidae,Typhlonectes,compressicauda,Tropics,Jean-Marie Exbrayat and Michel Delsol 1985,500,4,2,5,1.3,,,1,1
 Reptilia,Crocodilia,Crocodilia,Alligatoridae,Alligator,sinensis,Tropics,1,1500,25,1,50,6,0,,1,0
 Reptilia,Crocodilia,Crocodilia,Alligatoridae,Alligator,mississippiensis,Tropics,1,3500,39,1,25,15,0,110,1,0
