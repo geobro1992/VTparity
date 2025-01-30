@@ -120,7 +120,7 @@ Load model fits and select model for reconstructions.
 
 ```{r}
 #source("")#model fits
-fits <- readRDS("~/R/VTparity/output/fits_12122024.rds")
+fits <- readRDS("../output/fits_12122024.rds")
 recon_model <- fits$repmode_complete
 ###########Plots for model fits
 terncols2level <- c(lighten(terncols2,0.5), darken(terncols2,0.5))
