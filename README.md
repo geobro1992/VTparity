@@ -13,13 +13,13 @@ Brooks, G. C., Uyeda J. C., H. Conrad, N. Bone, C. Mull, and H. K. Kindsvater. 2
 - download repository and unzip in local drive\
 - download Rtools from cran.r-project.org/bin/windows/Rtools\
 - open _code.Rproj_ file in the 'code' folder\
-- install required packages: lazyeval, ape, rotl, castor, geiger, phytools, phylolm, rmarkdown, dplyr, plyr, Rphylopars, MCMCpack, Ternary, treeplyr*
+- install required packages: ape, rotl, castor, geiger, phytools, phylolm, rmarkdown, dplyr, plyr, Rphylopars, MCMCpack, Ternary, lazyeval, ComplexUpset, kableExtra, tricolore, UpSetR, viridis, treeplyr*
 
 *NOTE: package treeplyr has been removed from CRAN and so needs to be installed from source using Rtools. We have provided the _tar.gz_ file in the code folder.\
 Once Rtools has been installed and the .Rproj file has been opened, the following code should manually install the package from your local drive:\ 
 install.packages("treeplyr_0.1.10.tar.gz", repos = NULL, type="source")
 
-**Run scripts in this order:**
-- run _tree_merge.Rmd_ to create the full phylogeny and match life-history data to tree tips\
-- run _figs.R_ to create the raw data figures and basic regression\
-- run _analysis.Rmd_ to fit the ternary model and plot model predictions
+**If running from scratch (without calling saved objects already created in the 'output' folder), you will need to run scripts in this order:**
+- _tree_merge.Rmd_\
+- _figs.R_\
+- _phylo_analysis_summary.Rmd_
