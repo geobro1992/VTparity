@@ -170,7 +170,7 @@ saveRDS(res, file="../output/allchordates_6_8.rds")
 Match the names to the Open Tree of Life taxonomy to match it to the names on the tree:
 ```{r}
 dat$species <- gsub(" ", "_", dat$species)
-ott_table <- getOttIds(dat$species, ncores=2)
+ott_table <- getOttIds(dat$species, ncores=1) # takes a long time on windows, on mac can set ncores > 1 and it runs faster 
 saveRDS(ott_table, file="../output/ott_table_data.rds")
 ```
 
