@@ -8,3 +8,11 @@ Brooks, G. C., Uyeda J. C., H. Conrad, N. Bone, C. Mull, and H. K. Kindsvater. 2
 **trees** - phylogenetic trees for each vertebrate clade\
 **code** - R scripts to create the supertree and perform the discrete-state Markovian evolutionary model of vertebrate life-history transitions\
 **output** - model output and figures
+
+## Instructions
+download
+unzip
+open _code.Rproj_ file in code folder
+install required packages: ape, treeplyr, rotl, castor, geiger, phytools, phylolm, rmarkdown (NOTE: package treeplyr may need to be installed from source)
+
+run _tree_merge.Rmd_ to create the full phylogeny and match life-history data to tree tips
