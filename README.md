@@ -10,9 +10,9 @@ Brooks, G. C., Uyeda J. C., H. Conrad, N. Bone, C. Mull, and H. K. Kindsvater. 2
 **output** - model output and figures
 
 ## Instructions
-- download repository and unzip in local drive\
-- download Rtools from cran.r-project.org/bin/windows/Rtools\
-- open _code.Rproj_ file in the 'code' folder\
+- download repository and unzip in local drive
+- download Rtools from cran.r-project.org/bin/windows/Rtools
+- open _code.Rproj_ file in the 'code' folder
 - install required packages: ape, rotl, castor, geiger, phytools, phylolm, rmarkdown, dplyr, plyr, Rphylopars, MCMCpack, Ternary, lazyeval, ComplexUpset, kableExtra, tricolore, UpSetR, viridis, treeplyr*
 
 *NOTE: package treeplyr has been removed from CRAN and so needs to be installed from source using Rtools. We have provided the _tar.gz_ file in the code folder.\
@@ -20,6 +20,6 @@ Once Rtools has been installed and the .Rproj file has been opened, the followin
 install.packages("treeplyr_0.1.10.tar.gz", repos = NULL, type="source")
 
 **If running from scratch (without calling saved objects already created in the 'output' folder), you will need to run scripts in this order:**
-- _tree_merge.Rmd_\
-- _figs.R_\
+- _tree_merge.Rmd_
+- _figs.R_
 - _phylo_analysis_summary.Rmd_
