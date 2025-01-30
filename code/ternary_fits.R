@@ -1,4 +1,4 @@
-source("./phylotern/phyloternFunctions_reduced.R")
+source("phyloternFunctions_reduced.R")
 library(parallel)
 library(ape)
 library(treeplyr)
