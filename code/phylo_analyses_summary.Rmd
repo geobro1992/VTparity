@@ -22,23 +22,22 @@ library(xtable)
 library(UpSetR)
 library(ComplexUpset)
 getwd()
-#setwd("~/VTparity/phylo_analysis/")
 #dat <- read.csv("../datasets/vtparity.csv")
-ott_table <- readRDS(file="~/R/VTparity/output/ott_table_data.rds")
-td <-readRDS("~/R/VTparity/output/chordatedata_matched_estSizeComplete.rds")
+ott_table <- readRDS(file="../output/ott_table_data.rds")
+td <-readRDS("../output/chordatedata_matched_estSizeComplete.rds")
 #Data patches
 td$dat$repmode[td$dat$family=="Plethodontidae" & !is.na(td$dat$repmode) & td$dat$repmode==1] <- 0
 td$dat$svl[td$phy$tip.label=="Plethodon_cinereus"] <- 112
 td$dat$AdTerr[grep("Pipa_", td$phy$tip.label)] <- 0
 td$dat$Terr[grep("Pipa_", td$phy$tip.label)] <- 0
 td$dat$species <- td$phy$tip.label
-source("~/R/VTparity/phyloternFunctions_reduced.R")
+source("phyloternFunctions_reduced.R")
 ```
 
 ```{r pressure, echo=FALSE}
 completetd <- filter(td, !is.na(adMort), !is.na(lnSize), !is.na(juvMort))
 #source("./make_TernaryData.R")
-terntd <- readRDS("~/R/VTparity/output/terntd121824.RDS")
+terntd <- readRDS("../output/terntd121824.RDS")
 completetd <- filter(terntd, !is.na(totT))
 
 counts_complete <- round(count_ambiguous(completetd$dat$ddat, 16),0)
