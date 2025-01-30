@@ -24,7 +24,7 @@ pi <- plotTernaryIndex(4)
 #terncols2 <- terncols[as.character(1:16)]
 
 #########Global Fits###############
-cl <- makeCluster(20, type="FORK")     # set the number of processor cores
+cl <- makeCluster(20)     # set the number of processor cores
 setDefaultCluster(cl=cl) # set 'cl' as default cluster
 
 pps <- list(c(-0.6, 0.7,  -5, 0.01))
@@ -53,6 +53,10 @@ lnLfx1 <- make.lnLTernaryGrad(tree1, dat1, bins =4)
 
 fit0s <- list()
 fit1s <- list()
+
+opts <- list("algorithm"="NLOPT_LN_SBPLX",
+             "xtol_rel"=1.0e-6, 
+             "maxeval"=1000)
 
 for(i in 1:length(pps)){
   
@@ -101,7 +105,7 @@ fits$global_all <- bestmodel1
 
 
 #########Aquatic & Terrestrial###############
-cl <- makeCluster(20, type="FORK")     # set the number of processor cores
+cl <- makeCluster(20)     # set the number of processor cores
 setDefaultCluster(cl=cl) # set 'cl' as default cluster
 bins <- 4
 pps <- list(c(c(-0.6, 0.7,  -5, 0.01), c(-0.6, 0.7,  -5, 0.01), 0.05, 0.05))
@@ -127,10 +131,6 @@ lnLfx1(pps[[1]])
 
 fit2s <- list()
 fit3s <- list()
-
-opts <- list("algorithm"="NLOPT_LN_SBPLX",
-             "xtol_rel"=1.0e-6, 
-             "maxeval"=1000)
 
 for(i in 2:20){
   #if(i>length(fit2s)){
